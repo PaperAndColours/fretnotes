@@ -1,0 +1,243 @@
+<!DOCTYLE HTML>
+<html>
+	<head>
+	<script src="jquery.js"> </script>
+	<script src="notes.js"> </script>
+	<script>
+	function drawLine(context, x1, y1, x2, y2){
+		context.beginPath();
+		context.moveTo(x1, y1);
+		context.lineTo(x2, y2);
+		context.stroke();
+	};
+
+	function drawCircle(context, x, y, radius) {
+		context.beginPath();
+		context.fillStyle = "white"
+		context.arc(x, y, radius, 0, Math.PI*2);
+		context.fill();
+		context.stroke();
+	};
+
+	function Fretboard(context) {
+		this.context = context;
+
+		this.fret_count = 21;
+		var fret_count = this.fret_count;
+		this.strings = ["E", "A", "D", "G", "B", "E"].map(function(a) { return new GuitarString(a, fret_count) });
+		this.string_count = this.strings.length;
+
+		this.left = 100;
+		this.top = 30;
+		this.width = 1300;
+		this.height = 150;
+		this.right = this.left + this.width;
+		this.bottom = this.top + this.height;
+
+		this.padding_top = 20;
+		this.padding_bottom = 20;
+		this.padding_left = 20;
+		this.padding_right = 20;
+
+
+		this.frets_overhang = 3;
+
+		this.strings_top = this.top+this.padding_top;
+		this.strings_left = this.left + this.padding_left;
+		this.strings_right = this.right - this.padding_right;
+		this.strings_bottom = this.bottom - this.padding_bottom;
+		this.strings_length = this.strings_right - this.strings_left;
+		this.strings_height = this.strings_bottom - this.strings_top;
+		this.strings_spacer = this.strings_height/(this.string_count-1)
+
+		this.frets_top = this.strings_top - this.frets_overhang;
+		this.frets_bottom = this.strings_bottom + this.frets_overhang;
+
+		this.frets_open_position = -15;
+		this.frets_open_width = 90;
+
+		this.finger_min_margin = 2; //Gap between adjacent dots
+		this.finger_max_size = this.strings_spacer/2 - this.finger_min_margin;
+		this.finger_start_radius = 20; //Percentages of fret width
+		this.finger_end_radius =  40;
+
+		this.single_inlay_frets = [3, 5, 7, 9, 15, 17, 19];
+		this.double_inlay_frets = [12, 24];
+		this.inlay_radius = 5;
+
+		this.init = function() {
+			this.calcStringPos();
+			this.calcFretPos();
+		};
+		
+		this.init = function(){
+			//Fret positions & Finger positions
+			var frets = this.fret_count;
+			var scale_length = this.strings_length * Math.pow(2, frets/12) / (Math.pow(2, frets/12) - 1);
+			this.fret_position = [0];
+			this.finger_position = [this.frets_open_position];
+			this.inlay_position = [0];
+			this.fret_width = [this.frets_open_width];
+			for (i=1; i<frets; i++){
+				this.fret_position[i] = scale_length - (scale_length / Math.pow(2, i/12));
+				this.fret_position[i] = Math.round(this.fret_position[i]);
+
+				var curFret = this.fret_position[i];
+				var prevFret = this.fret_position[i-1];
+				var fretWidth = curFret - prevFret;
+				this.fret_width[i] = fretWidth;
+				var fretCenter = prevFret + fretWidth/2;
+				this.finger_position[i] = fretCenter;
+				this.inlay_position[i] = fretCenter;
+			}
+
+		//String Positions
+			this.string_position = []
+			for (var i=0; i<this.string_count; i++) {
+				this.string_position[i] = this.strings_spacer*i;
+			}
+		};
+
+		this.drawStrings = function() {
+			for (var i=0; i<this.string_count; i++) {
+				var y = this.string_position[i] + this.strings_top;
+				drawLine(this.context, this.strings_left, y, this.strings_right, y);
+			}
+		};
+
+		this.getPos = function(string_no, fret_no) {
+			string_no = this.string_count -1 - string_no
+			return [this.finger_position[fret_no] + this.strings_left, this.string_position[string_no] + this.strings_top]
+			
+		}
+
+		this.drawSingleInlay = function(i) {
+			x = this.strings_left + this.inlay_position[i];
+			y = this.strings_top + this.strings_height/2;
+			console.log(x, " ", y);
+			drawCircle(this.context, x, y, this.inlay_radius);
+		}
+		this.drawDoubleInlay = function(i) {
+			x = this.strings_left + this.inlay_position[i];
+			y1 = this.strings_top + this.strings_height/3;
+			y2 = this.strings_top + (this.strings_height/3)*2;
+			drawCircle(this.context, x, y1, this.inlay_radius);
+			drawCircle(this.context, x, y2, this.inlay_radius);
+		}
+		this.drawInlays = function() {
+			for (i=0; i<this.fret_count; i++) {
+				if (i in this.single_inlay_frets)
+					this.drawSingleInlay(this.single_inlay_frets[i])
+				if (i in this.double_inlay_frets)
+					this.drawDoubleInlay(this.double_inlay_frets[i])
+			}
+		}
+
+		this.drawFrets = function(){
+			for (var i=0; i<this.fret_position.length; i++) {
+				var x = this.fret_position[i] + this.strings_left;
+				drawLine(this.context, x, this.frets_top, x, this.frets_bottom);
+			}
+		};
+
+		this.calcFingerSize = function(fret_no) {
+			var width = this.fret_width[fret_no]/2;
+			var min_percent = this.finger_start_radius;
+			var max_percent = this.finger_end_radius;
+			var percent_difference = (max_percent - min_percent)/this.fret_count;
+			var current_percent = min_percent  + percent_difference * i;
+
+			var radius = (width/100)*current_percent;
+			if (radius > this.finger_max_size) radius =  this.finger_max_size;
+			return radius;
+		};
+		this.drawFinger = function(string_no, fret_no) {
+			var position = this.getPos(string_no, fret_no);
+			var x = position[0];
+			var y = position[1];
+			var radius = this.calcFingerSize(fret_no);
+
+			drawCircle(this.context, x, y, radius);
+		};
+
+		this.drawFingers = function(){
+			for (var i=0; i<this.finger_position.length; i++) {
+				for (var j=0; j<this.string_position.length; j++) {
+					var position = this.getPos(j, i);
+					var x = position[0];
+					var y = position[1];
+
+					var width = this.fret_width[i]/2;
+					var min_percent = this.finger_start_radius;
+					var max_percent = this.finger_end_radius;
+					var percent_difference = (max_percent - min_percent)/this.fret_count;
+					var current_percent = min_percent  + percent_difference * i;
+
+					var radius = (width/100)*current_percent;
+					if (radius > this.finger_max_size) radius =  this.finger_max_size;
+
+					drawCircle(this.context, x, y, radius);
+				}
+			}
+		};
+		this.drawScale = function(scale) {
+			for (var i=0; i<this.strings.length; i++) {
+				var frets = this.strings[i].findScale(scale);
+				for (var j=0; j<frets.length; j++) {
+					this.drawFinger(i, frets[j]);
+				}
+			}
+		}
+	}
+
+	function calculateFretPositions(scale_length, fret_count){
+		var scale_length = scale_length * Math.pow(2, fret_count/12) / (Math.pow(2, fret_count/12) - 1)
+		var positions = [0];
+		for (i=1; i<fret_count; i++){
+			positions[i] = scale_length - (scale_length / Math.pow(2, i/12));
+			positions[i] = Math.round(positions[i]);
+		}
+		return positions;
+	};
+
+
+
+	$(document).ready(function() {
+		var canvas = document.getElementById('canvas');
+		var context = canvas.getContext('2d');
+
+		context.font = '40pt Calibri';
+		context.fillStyle = 'blue';
+		//context.fillText('Hello World!', 50, 100);
+
+		var lines_count = 6;
+		var lines_top = 30;
+		var lines_spacer = 25;
+		var lines_left = 100;
+		var lines_length = 900;
+		
+		//drawHorizontalLines(context, lines_count, lines_top, lines_spacer, lines_left, lines_length);
+
+		var frets_count = 24;
+		var frets_overhang = 3;
+		var frets_top = lines_top - frets_overhang;
+		var frets_bottom = lines_top + lines_spacer*(lines_count-1) + frets_overhang;
+
+		//drawFrets(context, frets_count, frets_top, lines_left, frets_bottom, lines_length);
+
+		//var fingerPos = calculateFingerPositions(lines_length, frets_count)
+		a = new Fretboard(context);
+		a.init();
+		a.drawInlays();
+		a.drawFrets();
+		a.drawStrings();
+		//a.drawFingers();
+		var scale = new Scale(new Note("A"), new ScaleFormula("1 b3 b5 bb7"))
+		a.drawScale(scale);
+	});
+	</script>
+	</head>
+	<body>
+		<canvas id="canvas" width=1500 height=1000> </canvas>
+	</body>
+</html>
