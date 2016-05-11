@@ -1,0 +1,40 @@
+<script type="text/javascript" src="BufferLoader.js"></script>
+<script type="text/javascript">
+
+var audioContext;
+var bufferLoader;
+window.addEventListener('load', initAudio, false);
+
+function initAudio(){
+	try {
+		window.AudioContext = window.AudioContext||window.webkitAudioContext;
+		audioContext = new AudioContext();
+		bufferLoader = new BufferLoader(
+			audioContext,
+			{
+					birdsong: "bird_chirp.wav"
+			},
+			soundsLoaded
+			)
+			bufferLoader.load();
+	}
+	catch(e) {
+		alert('Web Audio not supported');
+	}
+}
+
+function soundsLoaded(bufferList) {
+	var birdsong = bufferList['birdsong'];
+	console.log(bufferList);
+	playSound(birdsong);
+}
+
+function playSound(source, time) {
+	var gainNode = audioContext.createGain();
+	source.connect(gainNode);
+	gainNode.connect(audioContext.destination);
+	gainNode.gain.value = 1;
+	source.start(time);
+}
+
+</script>
