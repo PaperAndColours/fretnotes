@@ -207,26 +207,11 @@ function Note(note) {
 
 	};
 	this.sub = function(value) {
-		if (value instanceof Interval) {
-			var interval = value;
-			var target_note = intToNote(noteToInt(this.note_name) - interval.degree +1);
-			var sum_semitones = this.semitones - interval.semitones;
-			return this._genNote(target_note, sum_semitones);
-		}
-		else if (value instanceof Note) {
-			var target = value;
-			var difference_semitones = target.semitones - this.semitones;
-			var difference_degrees = noteToInt(target.note_name) - noteToInt(this.note_name) +1;
-
-			var degree_reference = degreeToSemitones(difference_degrees);
-			var modifier = intToAccidental(difference_semitones - degree_reference);
-			console.log(modifier)
-			console.log(degree_reference)
-			console.log(difference_semitones)
-			console.log(difference_degrees)
-			return new Interval(modifier+difference_degrees);
-		}
-		else throw "Can only subtract Notes or Intervals from Notes";
+		assert(interval instanceof Interval, "Can only add Intervals to Notes");
+		var interval = value;
+		var target_note = intToNote(noteToInt(this.note_name) - interval.degree +1);
+		var sum_semitones = this.semitones - interval.semitones;
+		return this._genNote(target_note, sum_semitones);
 	};
 }
 
