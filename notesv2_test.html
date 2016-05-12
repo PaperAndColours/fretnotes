@@ -1,0 +1,54 @@
+<!DOCTYLE HTML>
+<html>
+	<head>
+	<style>
+	#noteContainer {
+		margin: 2em;
+		width: 50%;
+		float: left;
+		background: #ccc;
+	}
+	.note {
+		display: inline;
+		float: left;
+		background: #eee;
+		margin: 1em;
+		padding: 1em;
+		font-size: 20pt;
+		display: none;
+	}
+	</style>
+	<script src="jquery.js"> </script>
+	<script src="notes_v2.js"> </script>
+	<script>
+	var logno = 0;
+	function log(text) {
+		$("#noteContainer .note").eq(logno).text(text).toggle();
+		logno++;
+	}
+	$(function() {
+		var a = new Note("C2");
+		var b = new Note("B2");
+		var i = new Interval("1");
+		log(a.note());
+		log(b.note());
+		log(a.sub(b).interval());
+	});
+	</script>
+	</head>
+	<body>
+		<div id="noteContainer">
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+			<div class="note"></div>
+		</div>
+	</body>
+</html>
