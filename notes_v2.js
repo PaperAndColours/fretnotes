@@ -233,27 +233,3 @@ function Scale(root, formula) {
 	}
 }
 
-function GuitarString(root, frets) {
-	this.root = new Note(root);
-	this.frets = frets;
-
-	this.find = function(note) {
-		if (this.root.note_int > note.note_int) 
-			var start_octave = 1 
-		else
-			var start_octave = 0
-		var notes = []
-		for (var i=start_octave; (note.note_int + i*12) - this.root.note_int <= this.frets; i++){
-			notes.push((note.note_int + i*12) - this.root.note_int);
-		}
-		return notes;
-	}
-
-	this.findScale = function(scale) {
-		var frets = []
-		for (var i=0; i<scale.notes.length; i++) {
-			frets = frets.concat(this.find(scale.notes[i]));
-		}
-		return frets.sort(function(a, b) {return a-b});
-	};
-};

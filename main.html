@@ -2,7 +2,7 @@
 <html>
 	<head>
 	<script src="jquery.js"> </script>
-	<script src="notes.js"> </script>
+	<script src="notes_v2.js"> </script>
 	<script>
 	function drawLine(context, x1, y1, x2, y2){
 		context.beginPath();
@@ -19,24 +19,55 @@
 		context.stroke();
 	};
 
-	function FretNote(x, y, radius) {
+	function FretNote(note, interval, fret, strng, x, y, radius ) {
 		this.x = x;
 		this.y = y;
 		this.radius = radius;
+		this.note = 
 	};
 
-	function Fretboard() {
-		this.fret_count = 21;
-		this.strings = ["E", "A", "D", "G", "B", "E"].map(function(a) { return new GuitarString(a, fret_count) });
-		this.renderer = new FretboardRenderer(context, this);
+function GuitarString(root, frets) {
+	this.root = new Note(root);
+	this.frets = frets;
 
-		this.drawScale = function(scale) {
-			for (var i=0; i<this.strings.length; i++) {
-				var frets = this.strings[i].findScale(scale);
-				for (var j=0; j<frets.length; j++) {
-					this.drawFinger(i, frets[j]);
+	this.get = function(note) {
+		if (this.root.note_int > note.note_int) 
+			var start_octave = 1 
+		else
+			var start_octave = 0
+		var notes = []
+		for (var i=start_octave; (note.note_int + i*12) - this.root.note_int <= this.frets; i++){
+			notes.push((note.note_int + i*12) - this.root.note_int);
+		}
+		return notes;
+	}
+};
+
+	function Fretboard(renderer) {
+		this.fret_count = 21;
+		this.strings = ["E2", "A2", "D3", "G4", "B4", "E5"].map(function(a) { return new GuitarString(a, fret_count) });
+		this.renderer = renderer;
+
+		this.setScale = function(formula, start_fret, end_fret) {
+			var fretNotes = [];
+			var root = formula.root;
+			var intervals = formula.intervals;
+			var i = 0;
+			var octave = 1;
+			var shape_size = end_fret - start_fret;
+			while (var pos=0; pos<shape_size*this.strings.length; pos++) {
+				var fret = pos%shape_size;
+				var strng = Math.floor(pos/shape_size);
+				var scale_note = root.add(intervals[i]).add(octave);
+				var cursor_note = this.strings[strng].get(fret);
+
+				if (++i > intervals.length) {
+					i = 0;
+					octave += 8;
 				}
 			}
+
+			return fretNotes;
 		}
 	}
 
