@@ -4,6 +4,8 @@
 	<script src="jquery.js"> </script>
 	<script src="notes_v2.js"> </script>
 	<script>
+	l = console.log;
+
 	function drawLine(context, x1, y1, x2, y2){
 		context.beginPath();
 		context.moveTo(x1, y1);
@@ -20,51 +22,54 @@
 	};
 
 	function FretNote(note, interval, fret, strng, x, y, radius ) {
+		this.note = note;
+		this.interval = interval;
+		this.fret = fret;
+		this.strng = strng;
 		this.x = x;
 		this.y = y;
 		this.radius = radius;
-		this.note = 
 	};
 
-function GuitarString(root, frets) {
-	this.root = new Note(root);
-	this.frets = frets;
+	function GuitarString(root, frets) {
+		this.root = new Note(root);
+		this.frets = frets;
 
-	this.get = function(note) {
-		if (this.root.note_int > note.note_int) 
-			var start_octave = 1 
-		else
-			var start_octave = 0
-		var notes = []
-		for (var i=start_octave; (note.note_int + i*12) - this.root.note_int <= this.frets; i++){
-			notes.push((note.note_int + i*12) - this.root.note_int);
+		this.at_fret = function(fret) {
+			return this.root.add(new Interval(fret));
 		}
-		return notes;
-	}
-};
+	};
 
 	function Fretboard(renderer) {
 		this.fret_count = 21;
-		this.strings = ["E2", "A2", "D3", "G4", "B4", "E5"].map(function(a) { return new GuitarString(a, fret_count) });
-		this.renderer = renderer;
+		this.strings = ["E2", "A2", "D3", "G4", "B4", "E5"].map(function(a) { return new GuitarString(a, this.fret_count) });
 
-		this.setScale = function(formula, start_fret, end_fret) {
+		this.getScale = function(scale, start_fret, end_fret) {
 			var fretNotes = [];
-			var root = formula.root;
-			var intervals = formula.intervals;
+			var root = scale.root;
+			var intervals = scale.formula.intervals;
 			var i = 0;
 			var octave = 1;
 			var shape_size = end_fret - start_fret;
-			while (var pos=0; pos<shape_size*this.strings.length; pos++) {
+			for (var pos=0; pos<shape_size*this.strings.length; pos++) {
 				var fret = pos%shape_size;
 				var strng = Math.floor(pos/shape_size);
-				var scale_note = root.add(intervals[i]).add(octave);
-				var cursor_note = this.strings[strng].get(fret);
+				var scale_note = root.add(intervals[i]).add(new Interval(String(octave)));
+				var cursor_note = this.strings[strng].at_fret(fret);
 
-				if (++i > intervals.length) {
-					i = 0;
-					octave += 8;
+				if (cursor_note.semitones == scale_note.semitones) {
+					var position = this.renderer.getPos(strng, fret);
+					var x = position[0];
+					var y = position[1];
+					var radius = this.renderer.calcNoteSize(fret);
+					fretNotes.push(new FretNote(cursor_note, intervals[i], fret, strng, x, y, radius));
+
+					if (++i >= intervals.length) {
+						i = 0;
+						octave += 7;
+					}
 				}
+
 			}
 
 			return fretNotes;
@@ -74,6 +79,7 @@ function GuitarString(root, frets) {
 	function FretboardRenderer(context, fretboard) {
 		this.context = context;
 		this.fretboard = fretboard;
+		this.fretboard.renderer = this;
 
 		this.fret_count = this.fretboard.fret_count;
 		this.string_count = this.fretboard.strings.length;
@@ -104,6 +110,7 @@ function GuitarString(root, frets) {
 		this.frets_bottom = this.strings_bottom + this.frets_overhang;
 
 		this.frets_open_position = -15;
+
 		this.frets_open_width = 90;
 
 		this.finger_min_margin = 2; //Gap between adjacent dots
@@ -158,7 +165,6 @@ function GuitarString(root, frets) {
 		this.drawSingleInlay = function(i) {
 			x = this.strings_left + this.inlay_position[i];
 			y = this.strings_top + this.strings_height/2;
-			console.log(x, " ", y);
 			drawCircle(this.context, x, y, this.inlay_radius);
 		}
 		this.drawDoubleInlay = function(i) {
@@ -195,11 +201,6 @@ function GuitarString(root, frets) {
 			return [this.finger_position[fret_no] + this.strings_left, this.string_position[string_no] + this.strings_top]
 		}
 
-		this.getNote = function(string_no, fret_no) {
-			var position = this.getPos(string_no, fret_no);
-			return new FretNote(position[0], position[1], this.calcNoteSize(fret_no));
-		};
-
 	}
 
 
@@ -212,30 +213,15 @@ function GuitarString(root, frets) {
 		context.fillStyle = 'blue';
 		//context.fillText('Hello World!', 50, 100);
 
-		var lines_count = 6;
-		var lines_top = 30;
-		var lines_spacer = 25;
-		var lines_left = 100;
-		var lines_length = 900;
-		
-		//drawHorizontalLines(context, lines_count, lines_top, lines_spacer, lines_left, lines_length);
-
-		var frets_count = 24;
-		var frets_overhang = 3;
-		var frets_top = lines_top - frets_overhang;
-		var frets_bottom = lines_top + lines_spacer*(lines_count-1) + frets_overhang;
-
-		//drawFrets(context, frets_count, frets_top, lines_left, frets_bottom, lines_length);
-
-		//var fingerPos = calculateFingerPositions(lines_length, frets_count)
-		a = new Fretboard(context);
-		a.init();
-		a.drawInlays();
-		a.drawFrets();
-		a.drawStrings();
+		fretboard = new Fretboard();
+		fb_rend = new FretboardRenderer(context, fretboard);
+		fb_rend.init();
+		fb_rend.drawInlays();
+		fb_rend.drawFrets();
+		fb_rend.drawStrings();
 		//a.drawAllNotes();
-		var scale = new Scale(new Note("A"), new ScaleFormula("1 b3 b5 bb7"))
-		a.drawScale(scale);
+		var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"))
+		console.log(fretboard.getScale(scale, 0, 5));
 	});
 	</script>
 	</head>

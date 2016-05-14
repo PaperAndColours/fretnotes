@@ -2,53 +2,39 @@
 <html>
 	<head>
 	<style>
-	#noteContainer {
-		margin: 2em;
-		width: 50%;
-		float: left;
-		background: #ccc;
-	}
-	.note {
-		display: inline;
-		float: left;
-		background: #eee;
-		margin: 1em;
-		padding: 1em;
-		font-size: 20pt;
-		display: none;
-	}
 	</style>
 	<script src="jquery.js"> </script>
 	<script src="notes_v2.js"> </script>
+	<script src="note_test.js"> </script>
+	<link rel="stylesheet" href="style.css">
 	<script>
-	var logno = 0;
-	function log(text) {
-		$("#noteContainer .note").eq(logno).text(text).toggle();
-		logno++;
-	}
-	$(function() {
-		var a = new Note("C2");
-		var b = new Note("B2");
-		var i = new Interval("1");
-		log(a.note());
-		log(b.note());
-		log(a.sub(b).interval());
-	});
+		$(function() {
+			var container = $("#noteContainer");
+
+			var fw_add_iname = new Framework(".add semitones==semitones", interaction_add, evaluation_eq_intervalname, representation_std);
+			var suite = new Suite(container, "add ==semitones", fw_add_iname)
+
+			var a = new Interval("7");
+			var b = new Interval("2");
+			var r = new Interval("2");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("1");
+			var b = new Interval("1");
+			var r = new Interval("1");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("5");
+			var b = new Interval("2");
+			var r = new Interval("6");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("5");
+			var b = new Interval("b2");
+			var r = new Interval("b6");
+			suite.binaryTest(a, b, r);
+		});
 	</script>
 	</head>
 	<body>
 		<div id="noteContainer">
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
-			<div class="note"></div>
 		</div>
 	</body>
 </html>
