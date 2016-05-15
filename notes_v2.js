@@ -217,16 +217,21 @@ function Interval(name) {
 		if (this.dir != other.dir){
 			return this.sub(new Interval(other.interval(undefined,undefined,this.switchDir(other.dir))));
 		}
+		var target_degree = this.addDegrees(this.degree, other.degree);
 		var target_octave = this.octave + other.octave;
+		var target_dir = this.dir;
+		var octivate = this.Octivate(target_degree, target_octave);
+		target_degree = octivate[0];
+		target_octave = octivate[1];
 
-		var target_degree = this.degree + other.degree -1; //+1 to account for root
 		var target_semitones = this.semitones() + other.semitones();
 	
 		var naturalref_semitones = degreeToSemitones(target_degree);
 		var target_accidentals = target_semitones - naturalref_semitones;
-		var target_accidentals_str = intToAccidental(target_accidentals)
 
-		return new Interval(target_accidentals_str + String(target_degree));
+		target_degree += target_octave*7;
+		var target_accidentals_str = intToAccidental(target_accidentals)
+		return new Interval(target_accidentals_str + String(target_degree)+target_dir);
 
 	}
 	this.sub = function(other) {
@@ -334,14 +339,12 @@ function Note(note) {
 		var re_octave = note.search(/[-]?\d+/);
 
 		assert(re_validNote.test(note), "Invalid note name " + note);
-		this.note_name = note[0];
+		this.note_deg = noteToInt(note[0]);
 		this.accidentals = accidentalsToInt(note.slice(1, re_octave));
 		this.octave = parseInt(note.slice(re_octave));
-		this.semitones = noteToSemitones(this.note_name) + this.accidentals + this.octave*12;
-
 	}
 	this.note = function() {
-		return String(this.note_name) + intToAccidental(this.accidentals) + String(this.octave);
+		return String(intToNote(this.note_deg)) + intToAccidental(this.accidentals) + String(this.octave);
 	}
 
 	this._genNote = function(target_note, sum_semitones) {
@@ -354,25 +357,75 @@ function Note(note) {
 			target_octave--;
 			sum_semitones+= 12;
 		}
-		var degree_semitones = noteToSemitones(target_note);
-		var accidentals = intToAccidental(sum_semitones - degree_semitones);
-		return new Note(target_note+accidentals+target_octave);
+		var naturalref_semitones = degreeToSemitones(target_note);
+		var accidentals = intToAccidental(sum_semitones - naturalref_semitones);
+		return new Note(intToNote(target_note)+accidentals+target_octave);
 	}
 
 	this.add = function(interval) {
 		assert(interval instanceof Interval, "Can only add Intervals to Notes");
-		var target_note = intToNote(noteToInt(this.note_name) + interval.degree -1);
-		var sum_semitones = this.semitones + interval.semitones;
+		if (interval.dir == "<"){
+			return this.sub(new Interval(interval.interval(undefined,undefined,interval.switchDir(interval.dir))));
+		}
+		var target_note = this.note_deg + interval.degree -1;
+		var sum_semitones = this.fullSemitones() + interval.fullSemitones();
 		return this._genNote(target_note, sum_semitones);
+	};
 
-	};
 	this.sub = function(value) {
-		assert(interval instanceof Interval, "Can only subtract Intervals to Notes");
-		var interval = value;
-		var target_note = intToNote(noteToInt(this.note_name) - interval.degree +1);
-		var sum_semitones = this.semitones - interval.semitones;
+		if(value instanceof Interval) { return this.sub_interval(value);}
+		else if (value instanceof Note) { return this.sub_note(value); }
+	}
+	this.sub_note = function(other) {
+		var interval = new Interval("b2");
+		var target_degree = interval.addDegrees(other.note_deg, - this.note_deg);
+		var target_octave = other.octave - this.octave;
+		var target_dir = ">";
+
+		var octivate = interval.Octivate(target_degree, target_octave);
+		target_degree = octivate[0];
+		target_octave = octivate[1];
+
+		//work out accidentals
+		var target_semitones = other.semitones() - this.semitones();
+		while (target_semitones<0) target_semitones+=12;
+
+		var naturalref_semitones = degreeToSemitones(target_degree);
+		var target_accidentals = target_semitones - naturalref_semitones;
+
+		if (target_octave < 0) {
+			target_octave = -target_octave - 1;
+			var degAcc = interval.invert(target_degree, target_accidentals);
+			target_degree = degAcc[0];
+			target_accidentals = degAcc[1];
+			target_dir = interval.switchDir(target_dir);
+		}
+
+		target_degree += target_octave*7;
+		var target_accidentals_str = intToAccidental(target_accidentals)
+		return new Interval(target_accidentals_str + String(target_degree)+target_dir)
+	}
+
+
+	this.sub_interval = function(interval) {
+		assert(interval instanceof Interval, "Can only subtract Intervals from Notes");
+		if (interval.dir == "<"){
+			return this.add(new Interval(interval.interval(undefined,undefined,interval.switchDir(interval.dir))));
+		}
+		var target_note = interval.addDegrees(this.note_deg, -interval.degree);
+		target_note = interval.Octivate(target_note, 0)[0];
+		var sum_semitones = this.fullSemitones() - interval.fullSemitones();
 		return this._genNote(target_note, sum_semitones);
 	};
+	this.fullDegree = function() {
+		return this.note_deg + this.octave*7;
+	}
+	this.semitones =  function() {
+		return degreeToSemitones(this.note_deg) + this.accidentals;
+	}
+	this.fullSemitones = function() {
+		return degreeToSemitones(this.note_deg) + this.accidentals + this.octave*12;
+	}
 }
 
 function ScaleFormula(interval_list) {

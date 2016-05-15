@@ -11,6 +11,81 @@
 		$(function() {
 			var container = $("#noteContainer");
 
+
+			var note_sub_nname = new Framework("note.sub(note) ==intervalname", interaction_sub, evaluation_eq_intervalname, representation_std);
+			var suite = new Suite(container, "note-note ==intervalname", note_sub_nname)
+
+			var a = new Note("C#2");
+			var b = new Note("D1");
+			var r = new Interval("7<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("C2");
+			var b = new Note("Gbb3");
+			var r = new Interval("bb12");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("C2");
+			var b = new Note("G3");
+			var r = new Interval("12");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("D2");
+			var b = new Note("C2");
+			var r = new Interval("2<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("C2");
+			var b = new Note("D2");
+			var r = new Interval("2");
+			suite.binaryTest(a, b, r);
+
+
+			var note_sub_nname = new Framework("note.sub(interval) ==notename", interaction_sub, evaluation_eq_notename, representation_std);
+			var suite = new Suite(container, "sub ==notename", note_sub_nname)
+
+			var a = new Note("F2");
+			var b = new Interval("b2<");
+			var r = new Note("Gb2");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("F2");
+			var b = new Interval("b2");
+			var r = new Note("E2");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("G#3");
+			var b = new Interval("b3");
+			var r = new Note("E#3");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("C2");
+			var b = new Interval("2");
+			var r = new Note("Bb1");
+			suite.binaryTest(a, b, r);
+
+
+
+			var note_add_nname = new Framework("note.add(interval) ==notename", interaction_add, evaluation_eq_notename, representation_std);
+			var suite = new Suite(container, "sub ==notename", note_add_nname)
+
+			var a = new Note("C2");
+			var b = new Interval("2<");
+			var r = new Note("Bb1");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("C2");
+			var b = new Interval("#11");
+			var r = new Note("F#3");
+			suite.binaryTest(a, b, r);
+
+			var a = new Note("C2");
+			var b = new Interval("b3");
+			var r = new Note("Eb2");
+			suite.binaryTest(a, b, r);
+
+
+
 			var fw_sub_iname = new Framework("sub ==ivname", interaction_sub, evaluation_eq_intervalname, representation_std);
 			var suite = new Suite(container, "sub ==ivname", fw_sub_iname)
 
@@ -64,6 +139,10 @@
 
 			var fw_add_iname = new Framework("add ==ivname", interaction_add, evaluation_eq_intervalname, representation_std);
 			var suite = new Suite(container, "add ==ivname", fw_add_iname)
+			var a = new Interval("5");
+			var b = new Interval("5");
+			var r = new Interval("9");
+			suite.binaryTest(a, b, r);
 			var a = new Interval("2<");
 			var b = new Interval("3");
 			var r = new Interval("2>");
