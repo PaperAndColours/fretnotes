@@ -225,12 +225,13 @@ function play() {
 
     if (isPlaying) { // start playing
         nextEvent = 0;
+		scale_container.reset();
         nextTime = audioContext.currentTime;
         timerWorker.postMessage("start");
-        return "stop";
+        return "Stop";
     } else {
         timerWorker.postMessage("stop");
-        return "play";
+        return "Play";
     }
 }
 
@@ -238,7 +239,7 @@ function scheduler() {
     while (nextTime < audioContext.currentTime + scheduleAheadTime ) {
 		eventsInQueue.push( { note: nextEvent, time: nextTime } );
 		var osc = audioContext.createOscillator();
-		//osc.connect( audioContext.destination );
+		osc.connect( audioContext.destination );
 		osc.frequency.value = 880.0;
 		osc.start( nextTime );
 		osc.stop( nextTime + noteLength );
@@ -330,10 +331,13 @@ function NoteCollection(fretboard_renderer) {
 	}
 	this.setScale = function(notes) {
 		this.notes = notes;
-		this.index = 0;
-		this.dir = 1;
+		this.reset();
 		this.renderer.draw();
 		this.draw();
+	}
+	this.reset = function() {
+		this.index = 0;
+		this.dir = 1;
 	}
 }
 	function updateScale(note, scale, start_fret, end_fret) {
@@ -358,6 +362,11 @@ function NoteCollection(fretboard_renderer) {
 		updateScale(root, scale, min_fret, max_fret);
 
 	}
+
+	function togglePlay(button) {
+		$(this).text(play())
+	}
+
 	$(document).ready(function() {
 		var canvas = document.getElementById('canvas');
 		canvasWidth = canvas.width;
@@ -401,11 +410,17 @@ function NoteCollection(fretboard_renderer) {
 		$("[name=min_fret]").change(processScaleForm);
 		$("[name=max_fret]").change(processScaleForm);
 
+		$('.play').click(togglePlay);
+
+		$('#tempoBox :input').on('input', function(e) {
+			tempo = $(this).val(); 
+			$('#showTempo').text(tempo);
+		});
+
 		updateScale("G", "major", 5, 9);
 
 		//var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"));
 		requestAnimationFrame(draw);
-		play();
 	});
 	</script>
 	</head>
@@ -437,8 +452,8 @@ function NoteCollection(fretboard_renderer) {
 				<input type="number" name="max_fret" value="9" min="0" max="21"> 
 			</fieldset>
 			<fieldset>
-				<input type="number" name="bpm_fret" min="1" max="1000"> 
-				<button name="play"> Play </button>
+				  <div id="tempoBox">Tempo: <span id="showTempo">120</span>BPM <input id="tempo" type="range" min="30.0" max="160.0" step="1" value="120" style="height: 20px; width: 200px" ></div>
+				<div><a class="play" href="#">Play</a></div>
 			</fieldset>
 		</form>
 	</body>
