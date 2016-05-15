@@ -5,6 +5,9 @@
 	<script src="notes_v2.js"> </script>
 	<script>
 
+	var context = null;
+	var canvasWidth = null;
+	var canvasHeight = null;
 	var tempo = 120.0;          // tempo (in beats per minute)
 	var lookahead = 25.0;       // How frequently to call scheduling function 
 	var noteLength = 0.05;
@@ -20,14 +23,14 @@
 
 	var scale_container = null;
 
-	function drawLine(context, x1, y1, x2, y2){
+	function drawLine(x1, y1, x2, y2){
 		context.beginPath();
 		context.moveTo(x1, y1);
 		context.lineTo(x2, y2);
 		context.stroke();
 	};
 
-	function drawCircle(context, x, y, radius) {
+	function drawCircle(x, y, radius) {
 		context.beginPath();
 		context.fillStyle = "white"
 		context.arc(x, y, radius, 0, Math.PI*2);
@@ -55,7 +58,7 @@
 		}
 	};
 
-	function Fretboard(renderer) {
+	function Fretboard() {
 		this.fret_count = 21;
 		this.strings = ["E2", "A2", "D3", "G4", "B4", "E5"].map(function(a) { return new GuitarString(a, this.fret_count) });
 
@@ -84,18 +87,7 @@
 		}
 	}
 
-	function NoteRenderer(context) {
-		this.context = context;
-		this.draw = function(notes){
-			for(i=0; i<notes.length; i++) {
-				var note = notes[i];
-				drawCircle(this.context, note.x, note.y, note.radius);
-
-			}
-		}
-	}
-	function FretboardRenderer(context, fretboard) {
-		this.context = context;
+	function FretboardRenderer(fretboard) {
 		this.fretboard = fretboard;
 		this.fretboard.renderer = this;
 
@@ -169,28 +161,28 @@
 		this.drawFrets = function(){
 			for (var i=0; i<this.fret_position.length; i++) {
 				var x = this.fret_position[i] + this.strings_left;
-				drawLine(this.context, x, this.frets_top, x, this.frets_bottom);
+				drawLine(x, this.frets_top, x, this.frets_bottom);
 			}
 		};
 
 		this.drawStrings = function() {
 			for (var i=0; i<this.string_count; i++) {
 				var y = this.string_position[i] + this.strings_top;
-				drawLine(this.context, this.strings_left, y, this.strings_right, y);
+				drawLine(this.strings_left, y, this.strings_right, y);
 			}
 		};
 
 		this.drawSingleInlay = function(i) {
 			x = this.strings_left + this.inlay_position[i];
 			y = this.strings_top + this.strings_height/2;
-			drawCircle(this.context, x, y, this.inlay_radius);
+			drawCircle(x, y, this.inlay_radius);
 		}
 		this.drawDoubleInlay = function(i) {
 			x = this.strings_left + this.inlay_position[i];
 			y1 = this.strings_top + this.strings_height/3;
 			y2 = this.strings_top + (this.strings_height/3)*2;
-			drawCircle(this.context, x, y1, this.inlay_radius);
-			drawCircle(this.context, x, y2, this.inlay_radius);
+			drawCircle(x, y1, this.inlay_radius);
+			drawCircle(x, y2, this.inlay_radius);
 		}
 		this.drawInlays = function() {
 			for (i=0; i<this.fret_count; i++) {
@@ -201,6 +193,7 @@
 			}
 		}
 		this.draw = function() {
+			context.clearRect(0, 0, canvasWidth, canvasHeight);
 			this.drawInlays();
 			this.drawFrets();
 			this.drawStrings();
@@ -228,7 +221,6 @@
 
 
 function play() {
-	console.log("playing")
     isPlaying = !isPlaying;
 
     if (isPlaying) { // start playing
@@ -244,9 +236,9 @@ function play() {
 
 function scheduler() {
     while (nextTime < audioContext.currentTime + scheduleAheadTime ) {
-		eventsInQueue.push( { note: nextEvent, time: nextTime-animDelay } );
+		eventsInQueue.push( { note: nextEvent, time: nextTime } );
 		var osc = audioContext.createOscillator();
-		osc.connect( audioContext.destination );
+		//osc.connect( audioContext.destination );
 		osc.frequency.value = 880.0;
 		osc.start( nextTime );
 		osc.stop( nextTime + noteLength );
@@ -281,10 +273,9 @@ function hexCounter(value) {
 	return "#"+str+str+str;
 }
 
-function animateNote(context, duration, note) {
+function animateNote(duration, note) {
 	var start = new Date().getTime();
 	var end = start + duration;
-	var context = context;
 	var step = function() {
 		var timestamp = new Date().getTime();
 		var progress = Math.min((duration - (end - timestamp)) / duration, 1)
@@ -322,22 +313,56 @@ function animateNote(context, duration, note) {
 	step();
 }
 
-function NoteCollection(context, notes) {
-	this.context = context;
-	this.notes = notes;
+function NoteCollection(fretboard_renderer) {
 	this.index = 0;
 	this.dir = 1;
+	this.renderer = fretboard_renderer;
 	this.animate_next = function() {
-		animateNote(this.context, 1000, this.notes[this.index]);
+		animateNote(1000, this.notes[this.index]);
 		this.index = (this.index+this.dir)%this.notes.length;
 		if (this.index == this.notes.length-1) this.dir = -this.dir;
-		if (this.index == 0 && this.dir ==-1) this.dir = -this.dir;
+		if (this.index == 0 && this.dir ==-1) this.dir = -this.dir; }
+	this.draw = function(){
+		for(i=0; i<this.notes.length; i++) {
+			var note = this.notes[i];
+			drawCircle(note.x, note.y, note.radius);
+		}
+	}
+	this.setScale = function(notes) {
+		this.notes = notes;
+		this.index = 0;
+		this.dir = 1;
+		this.renderer.draw();
+		this.draw();
 	}
 }
+	function updateScale(note, scale, start_fret, end_fret) {
+		console.log(note, scale, start_fret, end_fret);
+		note = new Note(note+2)
+		var formula = {
+			"major":  new ScaleFormula("1 2 3 4 5 6 7"),
+			"minor":  new ScaleFormula("1 2 b3 4 5 b6 b7"),
+			"pent_major":  new ScaleFormula("1 2 3 5 6"),
+			"pent_minor":  new ScaleFormula("1 b3 4 5 b7")
+			}[scale];
+		var scale = new Scale(note, formula);
+		var notes = fretboard.getScale(scale, parseInt(start_fret), parseInt(end_fret));
+		scale_container.setScale(notes);
+	}
+	function processScaleForm(form) {
+		var form = $(this).parent();
+		var root = form.find("[name=root]").val();
+		var scale = form.find("[name=scale]").val();
+		var min_fret = form.find("[name=min_fret]").val();
+		var max_fret = form.find("[name=max_fret]").val();
+		updateScale(root, scale, min_fret, max_fret);
 
+	}
 	$(document).ready(function() {
 		var canvas = document.getElementById('canvas');
-		var context = canvas.getContext('2d');
+		canvasWidth = canvas.width;
+		canvasHeight = canvas.height;
+		context = canvas.getContext('2d');
 
 		context.font = '40pt Calibri';
 		context.fillStyle = 'blue';
@@ -366,31 +391,55 @@ function NoteCollection(context, notes) {
 		requestAnimFrame(draw);    // start the drawing loop.
 
 		fretboard = new Fretboard();
-		fb_rend = new FretboardRenderer(context, fretboard);
+		fb_rend = new FretboardRenderer(fretboard);
 		fb_rend.init();
 		fb_rend.draw();
+		scale_container= new NoteCollection(fb_rend);
 
-		var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"));
-		var scale = new Scale(new Note("G2"), new ScaleFormula("1 2 b3 4 5 b6 b7"));
-		fretboard.getScale(scale);
-		var note_rend = new NoteRenderer(context);
-		scale_container= new NoteCollection(context, fretboard.getScale(scale, 12, 16));
+		$("[name=root]").change(processScaleForm);
+		$("[name=scale]").change(processScaleForm);
+		$("[name=min_fret]").change(processScaleForm);
+		$("[name=max_fret]").change(processScaleForm);
+
+		updateScale("G", "major", 5, 9);
+
+		//var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"));
 		requestAnimationFrame(draw);
 		play();
-		/*note_rend.draw(notes);
-
-		var i=0;
-		var dir = 1;
-		window.setInterval(function() {
-			animateNote(context, 800, notes[i]);
-			i = (i+dir);
-			if (i == notes.length-1) dir = -dir;
-			if (i == 0 && dir ==-1) dir = -dir;
-		}, 600);*/
 	});
 	</script>
 	</head>
 	<body>
-		<canvas id="canvas" width=1500 height=1000> </canvas>
+		<canvas id="canvas" width=1500 height=500> </canvas>
+		<form name="controls">
+			<fieldset>
+				<select name="root">
+					<option value="C"> C </option>
+					<option value="C#"> C# </option>
+					<option value="D"> D </option>
+					<option value="D#"> D# </option>
+					<option value="E"> E </option>
+					<option value="F"> F </option>
+					<option value="F#"> F# </option>
+					<option value="G"> G </option>
+					<option value="G#"> G# </option>
+					<option value="A"> A </option>
+					<option value="A#"> A# </option>
+					<option value="B"> B </option>
+				</select>
+				<select name="scale">
+					<option value="major"> Major </option>
+					<option value="minor"> Minor </option>
+					<option value="pent_major"> Major Pentatonic </option>
+					<option value="pent_minor"> Minor Pentatonic </option>
+				</select>
+				<input type="number" name="min_fret" value="5" min="0" max="21"> 
+				<input type="number" name="max_fret" value="9" min="0" max="21"> 
+			</fieldset>
+			<fieldset>
+				<input type="number" name="bpm_fret" min="1" max="1000"> 
+				<button name="play"> Play </button>
+			</fieldset>
+		</form>
 	</body>
 </html>
