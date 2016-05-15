@@ -4,7 +4,21 @@
 	<script src="jquery.js"> </script>
 	<script src="notes_v2.js"> </script>
 	<script>
-	l = console.log;
+
+	var tempo = 120.0;          // tempo (in beats per minute)
+	var lookahead = 25.0;       // How frequently to call scheduling function 
+	var noteLength = 0.05;
+								//(in milliseconds)
+	var scheduleAheadTime = 0.1;    // How far ahead to schedule audio (sec)
+	var lastEvent = -1;
+	var eventsInQueue = [];
+	var nextTime = 0.0;
+	var nextEvent = 0;
+	var timeWorker = null;
+	var isPlaying = false;
+	var animDelay = 500;
+
+	var scale_container = null;
 
 	function drawLine(context, x1, y1, x2, y2){
 		context.beginPath();
@@ -186,6 +200,11 @@
 					this.drawDoubleInlay(this.double_inlay_frets[i])
 			}
 		}
+		this.draw = function() {
+			this.drawInlays();
+			this.drawFrets();
+			this.drawStrings();
+		}
 
 
 		this.calcNoteSize = function(fret_no) {
@@ -208,6 +227,54 @@
 	}
 
 
+function play() {
+	console.log("playing")
+    isPlaying = !isPlaying;
+
+    if (isPlaying) { // start playing
+        nextEvent = 0;
+        nextTime = audioContext.currentTime;
+        timerWorker.postMessage("start");
+        return "stop";
+    } else {
+        timerWorker.postMessage("stop");
+        return "play";
+    }
+}
+
+function scheduler() {
+    while (nextTime < audioContext.currentTime + scheduleAheadTime ) {
+		eventsInQueue.push( { note: nextEvent, time: nextTime-animDelay } );
+		var osc = audioContext.createOscillator();
+		osc.connect( audioContext.destination );
+		osc.frequency.value = 880.0;
+		osc.start( nextTime );
+		osc.stop( nextTime + noteLength );
+
+		var secondsPerBeat = 60.0 / tempo;    // current tempo
+		nextTime += 1 * secondsPerBeat;    
+		nextEvent++;
+    }
+}
+
+function draw() {
+    var currentEvent = lastEvent;
+    var currentTime = audioContext.currentTime;
+
+    while (eventsInQueue.length && eventsInQueue[0].time < currentTime) {
+        currentEvent = eventsInQueue[0].note;
+        eventsInQueue.splice(0,1);   
+    }
+    // We only need to draw if the note has moved.
+    if (lastEvent != currentEvent) {
+		scale_container.animate_next();
+        lastEvent = currentEvent;
+    }
+
+    requestAnimFrame(draw);
+}
+
+
 function hexCounter(value) {
 	value = Math.floor(255*value);
 	str = value.toString(16)
@@ -222,7 +289,7 @@ function animateNote(context, duration, note) {
 		var timestamp = new Date().getTime();
 		var progress = Math.min((duration - (end - timestamp)) / duration, 1)
 
-		if (progress < 0.7) 
+		if (progress < 0.64) 
 			var c_val = Math.round(Math.cos(progress*Math.PI*0.6)*100)/100;
 		else
 			var c_val = 1-Math.round(Math.cos(progress*Math.PI/2)*100)/100;
@@ -255,6 +322,19 @@ function animateNote(context, duration, note) {
 	step();
 }
 
+function NoteCollection(context, notes) {
+	this.context = context;
+	this.notes = notes;
+	this.index = 0;
+	this.dir = 1;
+	this.animate_next = function() {
+		animateNote(this.context, 1000, this.notes[this.index]);
+		this.index = (this.index+this.dir)%this.notes.length;
+		if (this.index == this.notes.length-1) this.dir = -this.dir;
+		if (this.index == 0 && this.dir ==-1) this.dir = -this.dir;
+	}
+}
+
 	$(document).ready(function() {
 		var canvas = document.getElementById('canvas');
 		var context = canvas.getContext('2d');
@@ -270,19 +350,35 @@ function animateNote(context, duration, note) {
 					window.setTimeout(callback, 1000 / 60);
 				  };
 		})();
+		audioContext = new AudioContext();
+
+		timerWorker = new Worker("metronomeworker.js");
+
+		timerWorker.onmessage = function(e) {
+			if (e.data == "tick") {
+				// console.log("tick!");
+				scheduler();
+			}
+			else
+				console.log("message: " + e.data);
+		};
+		timerWorker.postMessage({"interval":lookahead});
+		requestAnimFrame(draw);    // start the drawing loop.
 
 		fretboard = new Fretboard();
 		fb_rend = new FretboardRenderer(context, fretboard);
 		fb_rend.init();
-		fb_rend.drawInlays();
-		fb_rend.drawFrets();
-		fb_rend.drawStrings();
-		//a.drawAllNotes();
-		var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"))
-		fretboard.getScale(scale)
-		note_rend = NoteRenderer(context);
-		notes = fretboard.getScale(scale, 5, 9);
-		note_rend,draw(notes);
+		fb_rend.draw();
+
+		var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"));
+		var scale = new Scale(new Note("G2"), new ScaleFormula("1 2 b3 4 5 b6 b7"));
+		fretboard.getScale(scale);
+		var note_rend = new NoteRenderer(context);
+		scale_container= new NoteCollection(context, fretboard.getScale(scale, 12, 16));
+		requestAnimationFrame(draw);
+		play();
+		/*note_rend.draw(notes);
+
 		var i=0;
 		var dir = 1;
 		window.setInterval(function() {
@@ -290,7 +386,7 @@ function animateNote(context, duration, note) {
 			i = (i+dir);
 			if (i == notes.length-1) dir = -dir;
 			if (i == 0 && dir ==-1) dir = -dir;
-		}, 600);
+		}, 600);*/
 	});
 	</script>
 	</head>
