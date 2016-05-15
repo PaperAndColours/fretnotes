@@ -1,0 +1,86 @@
+<!DOCTYLE HTML>
+<html>
+	<head>
+	<script src="jquery.js"> </script>
+	<script src="notes_v2.js"> </script>
+	<script>
+	l = console.log;
+
+	function drawLine(context, x1, y1, x2, y2){
+		context.beginPath();
+		context.moveTo(x1, y1);
+		context.lineTo(x2, y2);
+		context.stroke();
+	};
+
+
+	function clearBG(context, width, height) {
+		context.clearRect(0, 0, width, height);
+	}
+
+function hexCounter(value) {
+	value = Math.floor(255*Math.min(value,1));
+	str = value.toString(16)
+	return "#"+str+str+str;
+}
+
+function animateNote(context, duration, note) {
+	var start = new Date().getTime();
+	var end = start + duration;
+	var context = context;
+	var step = function() {
+		var timestamp = new Date().getTime();
+		var progress = Math.min((duration - (end - timestamp)) / duration, 1)
+		if (progress<0.9) {
+			context.beginPath();
+			context.fillStyle = hexCounter(1-progress);
+			context.arc(200, 200, 100, 0, Math.PI*2);
+			context.closePath();
+			context.fill();
+			context.stroke();
+		}
+		else if (progress<0.97) {
+			context.beginPath();
+			context.fillStyle = "#000";
+			context.arc(200, 200, 100, 0, Math.PI*2);
+			context.closePath();
+			context.fill();
+			context.stroke();
+		}
+		else{
+			context.beginPath();
+			context.fillStyle = "#fff";
+			context.arc(200, 200, 100, 0, Math.PI*2);
+			context.closePath();
+			context.fill();
+			context.stroke();
+		}
+
+		if (progress < 1) {
+			requestAnimationFrame(step);
+		}
+	}
+	step();
+}
+
+
+	$(document).ready(function() {
+		var canvas = document.getElementById('canvas');
+		var context = canvas.getContext('2d');
+		var width = canvas.width;
+		var height = canvas.height;
+		var requestAnimationFrame = window.requestAnimationFrame || 
+									window.mozRequestAnimationFrame || 
+									window.webkitRequestAnimationFrame || 
+									window.msRequestAnimationFrame;
+
+		clearBG(context, width, height);
+		animateNote(context, 400);
+
+	});
+	</script>
+	</head>
+	<body>
+		<canvas id="canvas" width=1500 height=1000> </canvas>
+	</body>
+</html>

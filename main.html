@@ -209,7 +209,7 @@
 
 
 function hexCounter(value) {
-	value = Math.floor(255*Math.min(value,1));
+	value = Math.floor(255*value);
 	str = value.toString(16)
 	return "#"+str+str+str;
 }
@@ -222,10 +222,10 @@ function animateNote(context, duration, note) {
 		var timestamp = new Date().getTime();
 		var progress = Math.min((duration - (end - timestamp)) / duration, 1)
 
-		if (progress < 0.4) 
-			var c_val = Math.round(Math.cos(progress*Math.PI/3)*100)/100;
+		if (progress < 0.7) 
+			var c_val = Math.round(Math.cos(progress*Math.PI*0.6)*100)/100;
 		else
-			var c_val = Math.round(Math.sin(progress*Math.PI/2)*100)/100;
+			var c_val = 1-Math.round(Math.cos(progress*Math.PI/2)*100)/100;
 
 
 		var fs = hexCounter(c_val);
@@ -262,10 +262,14 @@ function animateNote(context, duration, note) {
 		context.font = '40pt Calibri';
 		context.fillStyle = 'blue';
 		//context.fillText('Hello World!', 50, 100);
-		var requestAnimationFrame = window.requestAnimationFrame || 
-									window.mozRequestAnimationFrame || 
-									window.webkitRequestAnimationFrame || 
-									window.msRequestAnimationFrame;
+		window.requestAnimFrame = (function(){
+		  return  window.requestAnimationFrame       ||
+				  window.webkitRequestAnimationFrame ||
+				  window.mozRequestAnimationFrame    ||
+				  function( callback ){
+					window.setTimeout(callback, 1000 / 60);
+				  };
+		})();
 
 		fretboard = new Fretboard();
 		fb_rend = new FretboardRenderer(context, fretboard);
