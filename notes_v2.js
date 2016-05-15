@@ -127,6 +127,11 @@ function semitonesToNoteFull(note) {
 }
 
 function degreeToSemitones(note) {
+		var octave = 0;
+		while (note > 7){
+			octave++;
+			note-=7;
+		}
 		return {
 		1:0,
 		2:2,
@@ -135,7 +140,7 @@ function degreeToSemitones(note) {
 		5:7,
 		6:9,
 		7:11
-		}[note];
+		}[note]+octave*12;
 }
 
 function noteToInt(note) {
@@ -175,13 +180,13 @@ function Interval(name) {
 
 			this.accidentals = accidentalsToInt(name.slice(0, re_degree))
 			this.degree = parseInt(name.slice(re_degree, re_dir));
-
-			this.octave = 0;
-			this.seperateOctavesDegrees();
 			this.dir = name.slice(re_dir) || ">";
+			this.octave = 0;
 
-			this.base_semitones = degreeToSemitones(this.degree) + this.accidentals + this.octave*12;
-			this.semitones =  this.base_semitones +	this.octave*12;
+			var octivate = this.Octivate(this.degree, this.octave);
+			this.degree = octivate[0];
+			this.octave = octivate[1];
+
 		}
 		else if (typeof(name) =="number") {
 			this.octave = 0;
@@ -195,56 +200,130 @@ function Interval(name) {
 					this.degree = i+1;
 			}
 			this.accidentals = name - this.degree +1;
-			this.semitones = degreeToSemitones(this.degree) + this.accidentals + this.octave*12;
 		}
 	}
 
-	this.interval = function() {
-		return intToAccidental(this.accidentals) + String(this.degree + this.octave*7) +this.dir;
+	this.interval = function(degree, accidentals, dir) {
+		var degree = degree || this.fullDegree();
+		var accidentals = accidentals || this.accidentals;
+		var dir = dir || this.dir;
+		return intToAccidental(accidentals) + String(degree) +dir;
 	}
 	this.collapseOctaves = function() {
 		return new Interval(intToAccidental(this.accidentals) + String(this.degree) + this.dir);
 	}
 	this.add = function(other) {
 		assert(other instanceof Interval, "Can only add Intervals to Intervals");
+		if (this.dir != other.dir){
+			return this.sub(new Interval(other.interval(undefined,undefined,this.switchDir(other.dir))));
+		}
+		var target_octave = this.octave + other.octave;
+
 		var target_degree = this.degree + other.degree -1; //+1 to account for root
-		var target_semitones = this.semitones + other.semitones;
+		var target_semitones = this.semitones() + other.semitones();
 	
 		var naturalref_semitones = degreeToSemitones(target_degree);
 		var target_accidentals = target_semitones - naturalref_semitones;
+		var target_accidentals_str = intToAccidental(target_accidentals)
 
-		var target_octave = this.octave + other.octave;
-		this.seperateOctavesDegrees();
-		return new Interval(intToAccidental(target_accidentals) + String(target_degree));
+		return new Interval(target_accidentals_str + String(target_degree));
 
 	}
 	this.sub = function(other) {
-		assert(interval instanceof Interval, "Can only subtract Intervals from Intervals");
-		var target_degree = this.degree - other.degree +1;
-		var target_semitones = this.semitones - other.semitones;
-	
+		assert(other instanceof Interval, "Can only subtract Intervals from Intervals");
+		if (this.dir != other.dir){
+			return this.add(new Interval(other.interval(undefined,undefined,this.switchDir(other.dir))));
+		}
+
+		//work out degree
+		var target_degree = this.addDegrees(this.degree, - other.degree);
+		var target_octave = this.octave - other.octave;
+		var target_dir = this.dir;
+
+		var octivate = this.Octivate(target_degree, target_octave);
+		target_degree = octivate[0];
+		target_octave = octivate[1];
+
+		//work out accidentals
+		var target_semitones = this.semitones() - other.semitones();
+		while (target_semitones<0) target_semitones+=12;
+
 		var naturalref_semitones = degreeToSemitones(target_degree);
-		var target_accidentals = target_semitones - natural_semitones;
+		var target_accidentals = target_semitones - naturalref_semitones;
 
-		var target_octave = this.octave + other.octave;
-		var target = new Interval(intToAccidental(target_accidentals) + String(target_degree))
-		return target;
+		if (target_octave < 0) {
+			target_octave = -target_octave - 1;
+			var degAcc = this.invert(target_degree, target_accidentals);
+			target_degree = degAcc[0];
+			target_accidentals = degAcc[1];
+			target_dir = this.switchDir(target_dir);
+		}
+
+		target_degree += target_octave*7;
+		var target_accidentals_str = intToAccidental(target_accidentals)
+		return new Interval(target_accidentals_str + String(target_degree)+target_dir)
 	}
-	this.invert = function() {
-	}
-	this.switchDir = function() {
+	this.addDegrees = function(degree1, degree2) {
+		if (degree1 in [-1, 1]) 
+			if (degree2 == -1) return 1;
+		else return degree2
+
+		if (degree2 in [-1, 1]) 
+			return degree1
+
+		if (degree1 >0 && degree2>0)
+			return degree1+degree2-1;
+
+		if (degree1 <0 && degree2<0)
+			return degree1+degree2-1;
+
+		if ((degree1 < 0 && degree2>0) || (degree1>0 && degree2<0)) {
+			var pos = Math.max(degree1, degree2)
+			var neg = -Math.min(degree1, degree2)
+
+			if (pos >= neg) return degree1+degree2+1;
+			if (neg > pos) return degree1+degree2-1;
+		}
 	}
 
-	this.seperateOctavesDegrees = function() {
-		while (this.degree > 7) {
-			this.octave++;
-			this.degree -= 7;
-		}
-		while (this.degree < 1) {
-			this.octave--;
-			this.degree += 7;
-		}
+	this.fullDegree = function() {
+		return this.degree + this.octave*7;
 	}
+
+	this.semitones =  function() {
+		return degreeToSemitones(this.degree) + this.accidentals;
+	}
+	this.fullSemitones = function() {
+		return degreeToSemitones(this.degree) + this.accidentals + this.octave*12;
+	}
+	this.Octivate = function(degree, octave) {
+		if (degree<1) {
+			while (degree < 1) {
+				octave--;
+				degree += 7;
+			}
+			degree+=2;
+		}
+		while (degree > 7) {
+			octave++;
+			degree -= 7;
+		}
+		return [degree, octave]
+	}
+
+	this.invert = function(degree, accidentals) {
+		var target_degree = 9-degree;
+		var target_semitones = 12 - degreeToSemitones(degree)-accidentals;
+		
+		var naturalref_semitones = degreeToSemitones(target_degree);
+		var target_accidentals = target_semitones - naturalref_semitones;
+		return [target_degree, target_accidentals]
+	}
+	this.switchDir = function(dir) {
+		return {">":"<", "<":">"}[dir];
+	}
+
+
 	this.init();
 };
 

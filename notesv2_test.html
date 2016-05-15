@@ -11,12 +11,74 @@
 		$(function() {
 			var container = $("#noteContainer");
 
-			var fw_add_iname = new Framework(".add semitones==semitones", interaction_add, evaluation_eq_intervalname, representation_std);
-			var suite = new Suite(container, "add ==semitones", fw_add_iname)
+			var fw_sub_iname = new Framework("sub ==ivname", interaction_sub, evaluation_eq_intervalname, representation_std);
+			var suite = new Suite(container, "sub ==ivname", fw_sub_iname)
 
+			var a = new Interval("3>");
+			var b = new Interval("3<");
+			var r = new Interval("#5>");
+			suite.binaryTest(a, b, r);
+
+			var a = new Interval("5");
+			var b = new Interval("13");
+			var r = new Interval("9<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Interval("2");
+			var b = new Interval("9");
+			var r = new Interval("8<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Interval("b2");
+			var b = new Interval("3");
+			var r = new Interval("#2<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Interval("3");
+			var b = new Interval("#4");
+			var r = new Interval("2<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Interval("2");
+			var b = new Interval("b3");
+			var r = new Interval("b2<");
+			suite.binaryTest(a, b, r);
+
+			var a = new Interval("8");
+			var b = new Interval("2");
+			var r = new Interval("b7");
+			suite.binaryTest(a, b, r);
+			
+			var a = new Interval("2");
+			var b = new Interval("3");
+			var r = new Interval("2<");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("4");
+			var b = new Interval("2");
+			var r = new Interval("b3");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("7");
+			var b = new Interval("b3");
+			var r = new Interval("#5");
+			suite.binaryTest(a, b, r);
+
+			var fw_add_iname = new Framework("add ==ivname", interaction_add, evaluation_eq_intervalname, representation_std);
+			var suite = new Suite(container, "add ==ivname", fw_add_iname)
+			var a = new Interval("2<");
+			var b = new Interval("3");
+			var r = new Interval("2>");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("3");
+			var b = new Interval("3");
+			var r = new Interval("#5");
+			suite.binaryTest(a, b, r);
+			var a = new Interval("7");
+			var b = new Interval("3");
+			var r = new Interval("#9");
+			suite.binaryTest(a, b, r);
 			var a = new Interval("7");
 			var b = new Interval("2");
-			var r = new Interval("2");
+			var r = new Interval("#8");
 			suite.binaryTest(a, b, r);
 			var a = new Interval("1");
 			var b = new Interval("1");
