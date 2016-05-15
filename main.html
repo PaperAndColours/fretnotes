@@ -34,6 +34,7 @@
 	function GuitarString(root, frets) {
 		this.root = new Note(root);
 		this.frets = frets;
+		this.highest = this.root + new Interval(frets);
 
 		this.at_fret = function(fret) {
 			return this.root.add(new Interval(fret));
@@ -48,34 +49,37 @@
 			var fretNotes = [];
 			var root = scale.root;
 			var intervals = scale.formula.intervals;
-			var i = 0;
-			var octave = 1;
 			var shape_size = end_fret - start_fret;
 			for (var pos=0; pos<shape_size*this.strings.length; pos++) {
-				var fret = pos%shape_size;
+				var fret = start_fret+(pos%shape_size);
 				var strng = Math.floor(pos/shape_size);
-				var scale_note = root.add(intervals[i]).add(new Interval(String(octave)));
 				var cursor_note = this.strings[strng].at_fret(fret);
 
-				if (cursor_note.semitones == scale_note.semitones) {
+				for(var i=0; i<intervals.length; i++) {
+				var scale_note = root.add(intervals[i]);
+				if (cursor_note.semitones() == scale_note.semitones()) {
 					var position = this.renderer.getPos(strng, fret);
 					var x = position[0];
 					var y = position[1];
 					var radius = this.renderer.calcNoteSize(fret);
 					fretNotes.push(new FretNote(cursor_note, intervals[i], fret, strng, x, y, radius));
-
-					if (++i >= intervals.length) {
-						i = 0;
-						octave += 7;
 					}
 				}
-
 			}
-
 			return fretNotes;
 		}
 	}
 
+	function NoteRenderer(context) {
+		this.context = context;
+		this.draw = function(notes){
+			for(i=0; i<notes.length; i++) {
+				var note = notes[i];
+				drawCircle(this.context, note.x, note.y, note.radius);
+
+			}
+		}
+	}
 	function FretboardRenderer(context, fretboard) {
 		this.context = context;
 		this.fretboard = fretboard;
@@ -204,6 +208,52 @@
 	}
 
 
+function hexCounter(value) {
+	value = Math.floor(255*Math.min(value,1));
+	str = value.toString(16)
+	return "#"+str+str+str;
+}
+
+function animateNote(context, duration, note) {
+	var start = new Date().getTime();
+	var end = start + duration;
+	var context = context;
+	var step = function() {
+		var timestamp = new Date().getTime();
+		var progress = Math.min((duration - (end - timestamp)) / duration, 1)
+
+		if (progress < 0.4) 
+			var c_val = Math.round(Math.cos(progress*Math.PI/3)*100)/100;
+		else
+			var c_val = Math.round(Math.sin(progress*Math.PI/2)*100)/100;
+
+
+		var fs = hexCounter(c_val);
+
+		context.fillStyle = "#fff";
+		context.beginPath();
+		context.arc(note.x, note.y, note.radius+1, 0, Math.PI*2);
+		context.closePath();
+		context.fill();
+
+		var rad = note.radius;
+		context.beginPath();
+		context.fillStyle = fs;
+		context.arc(note.x, note.y, rad, 0, Math.PI*2);
+		context.closePath();
+		context.fill();
+
+		context.beginPath();
+		context.arc(note.x, note.y, rad, 0, Math.PI*2);
+		context.closePath();
+		context.stroke();
+
+		if (progress < 1) {
+			requestAnimationFrame(step);
+		}
+	}
+	step();
+}
 
 	$(document).ready(function() {
 		var canvas = document.getElementById('canvas');
@@ -212,6 +262,10 @@
 		context.font = '40pt Calibri';
 		context.fillStyle = 'blue';
 		//context.fillText('Hello World!', 50, 100);
+		var requestAnimationFrame = window.requestAnimationFrame || 
+									window.mozRequestAnimationFrame || 
+									window.webkitRequestAnimationFrame || 
+									window.msRequestAnimationFrame;
 
 		fretboard = new Fretboard();
 		fb_rend = new FretboardRenderer(context, fretboard);
@@ -221,7 +275,18 @@
 		fb_rend.drawStrings();
 		//a.drawAllNotes();
 		var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"))
-		console.log(fretboard.getScale(scale, 0, 5));
+		fretboard.getScale(scale)
+		note_rend = NoteRenderer(context);
+		notes = fretboard.getScale(scale, 5, 9);
+		note_rend,draw(notes);
+		var i=0;
+		var dir = 1;
+		window.setInterval(function() {
+			animateNote(context, 800, notes[i]);
+			i = (i+dir);
+			if (i == notes.length-1) dir = -dir;
+			if (i == 0 && dir ==-1) dir = -dir;
+		}, 600);
 	});
 	</script>
 	</head>

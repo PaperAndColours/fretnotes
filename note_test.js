@@ -41,6 +41,9 @@ interaction_add= function(e1,e2) {
 interaction_sub = function(e1,e2) {
 	return e1.sub(e2);
 };
+interaction_discard = function(e1,e2) {
+	return e1;
+};
 
 function Suite(container, name, framework) {
 	this.framework = framework;

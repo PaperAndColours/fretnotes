@@ -12,6 +12,27 @@
 			var container = $("#noteContainer");
 
 
+			var intfromint_iname = new Framework("int_from_int ==intervalname", interaction_discard, evaluation_eq_intervalname, representation_std);
+			var suite = new Suite(container, "note-note ==intervalname", intfromint_iname)
+
+			var a = new Interval(15);
+			var b = new Note("A0");
+			var r = new Interval("b10");
+			suite.binaryTest(a, b, r);
+			var a = new Interval(3);
+			var b = new Note("A0");
+			var r = new Interval("b3");
+			suite.binaryTest(a, b, r);
+			var a = new Interval(13);
+			var b = new Note("A0");
+			var r = new Interval("b9");
+			suite.binaryTest(a, b, r);
+			var a = new Interval(3);
+			var b = new Note("A0");
+			var r = new Interval("b3");
+			suite.binaryTest(a, b, r);
+
+
 			var note_sub_nname = new Framework("note.sub(note) ==intervalname", interaction_sub, evaluation_eq_intervalname, representation_std);
 			var suite = new Suite(container, "note-note ==intervalname", note_sub_nname)
 

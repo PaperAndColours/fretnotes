@@ -170,7 +170,7 @@ function intToNote(i) {
 
 
 function Interval(name) {
-	this.init = function() {
+	this.init = function(name) {
 		if (typeof(name)=="string") {
 			var re_validInterval = /^[b#]*\d+[<>]?$/;
 			assert(re_validInterval.test(name), "Invalid interval name");
@@ -189,17 +189,27 @@ function Interval(name) {
 
 		}
 		else if (typeof(name) =="number") {
-			this.octave = 0;
-			while (name>12) {
-				this.octave++;
+			var octave = 0;
+			while (name>=12) {
+				octave++;
 				name -= 12;
 			}
-			var intervals = [0, 2, 4, 5, 7, 9, 11]
-			for(var i=0; i<intervals.length; i++) {
-				if (name>= intervals[i]) 
-					this.degree = i+1;
-			}
-			this.accidentals = name - this.degree +1;
+			var intervals_accidentals = {
+				 0: [1, 0],
+				 1: [2, -1],
+				 2: [2, 0],
+				 3: [3, -1],
+				 4: [3, 0],
+				 5: [4, 0],
+				 6: [5, -1],
+				 7: [5, 0],
+				 8: [6, -1],
+				 9: [6, 0],
+				 10: [7, -1],
+				 11: [7, 0]}[name];
+		 var interval = intervals_accidentals[0] + octave*7;
+		 var accidentals = intToAccidental(intervals_accidentals[1]);
+		 this.init(accidentals+String(interval));
 		}
 	}
 
@@ -329,7 +339,7 @@ function Interval(name) {
 	}
 
 
-	this.init();
+	this.init(name);
 };
 
 
