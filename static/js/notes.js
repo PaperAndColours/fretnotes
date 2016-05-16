@@ -438,9 +438,10 @@ function Note(note) {
 	}
 }
 
-function ScaleFormula(interval_list) {
+function ScaleFormula(name, interval_list) {
 	assert(typeof(interval_list) == "string", "ScaleFormula must take a string for now")
 	interval_list = interval_list.split(" ");
+	this.name = name;
 	this.intervals = [];
 	for (var i=0; i< interval_list.length; i++) {
 		this.intervals.push(new Interval(interval_list[i]));

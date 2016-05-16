@@ -1,13 +1,15 @@
 <!DOCTYLE HTML>
 <html>
 	<head>
-	<script src="jquery.js"> </script>
-	<script src="notes_v2.js"> </script>
+	<link rel="stylesheet" href="{{url_for('static', filename='css/style.css')}}">
+	<script src="{{url_for('static', filename='js/jquery.js)'}}"> </script>
+	<script src="{{url_for('static', filename='js/notes.js')}}"> </script>
 	<script>
 
 	var context = null;
 	var canvasWidth = null;
 	var canvasHeight = null;
+	var timer = null;
 	var tempo = 120.0;          // tempo (in beats per minute)
 	var lookahead = 25.0;       // How frequently to call scheduling function 
 	var noteLength = 0.05;
@@ -58,18 +60,84 @@
 		}
 	};
 
+	function Shape(options) {
+		this.name = options.name;
+		this.baseString = options.baseString;
+		this.strings = options.strings || 6;
+		this.single_frets_above = options.singleFretsAbove || {};
+		this.single_frets_below = options.singleFretsBelow || {};
+		this.all_frets_above = options.allFretsAbove;
+		this.all_frets_below = options.allFretsBelow;
+		this.scale_adjustments = {
+			minor: -2,
+			pent_minor:-2 
+			};
+		this.getFretsAbove = function(strng) {
+			return this.single_frets_above[strng] || this.all_frets_above
+		}
+		this.getFretsBelow = function(strng) {
+			return this.single_frets_below[strng] || this.all_frets_below
+		}
+
+		this.makeShape = function(root, strings, scale) {
+			var strng = strings[this.baseString];
+			while (root.fullSemitones() - strng.root.fullSemitones() > 12) root = root.sub(new Interval("8"))
+			while (root.fullSemitones() - strng.root.fullSemitones() < 0) root = root.add(new Interval("8"))
+			var adj = 0;
+			if ($.inArray(scale.formula.name,Object.keys(this.scale_adjustments))>-1)
+				adj = this.scale_adjustments[scale.formula.name];
+			this.base = root.fullSemitones() - strng.root.fullSemitones() + adj;
+			this.min = [];
+			this.max = [];
+			var addOctave = false;
+			for (var i=0; i<6; i++){
+				this.min.push(this.base - this.getFretsBelow(i))
+				this.max.push(this.base + this.getFretsAbove(i))
+				if (this.min.slice(-1) < 0)
+					addOctave = true;
+			}
+			if (addOctave){
+				for (var i=0; i<6; i++){
+					this.min[i] += 12;
+					this.max[i] += 12;
+				}
+			}
+			this.size = this.max - this.min;
+			this.cur_string = 0;
+			this.cur_fret = this.min[this.cur_string];
+			this.finished = false;
+		}
+		this.getNext = function() {
+			var strng = this.cur_string;
+			var fret = this.cur_fret;
+			var finished = this.finished;
+
+			if (this.cur_fret < this.max[this.cur_string]) this.cur_fret++;
+			else if (this.cur_string < 5) {
+				this.cur_string++;
+				this.cur_fret = this.min[this.cur_string];
+			}
+			else
+				this.finished = true;
+			if (finished)
+				return false;
+			else
+				return [fret, strng]
+		}
+	}
+
 	function Fretboard() {
 		this.fret_count = 21;
 		this.strings = ["E2", "A2", "D3", "G4", "B4", "E5"].map(function(a) { return new GuitarString(a, this.fret_count) });
 
-		this.getScale = function(scale, start_fret, end_fret) {
+		this.getScale = function(scale, shape) {
 			var fretNotes = [];
 			var root = scale.root;
+			shape.makeShape(root, this.strings, scale)
 			var intervals = scale.formula.intervals;
-			var shape_size = end_fret - start_fret;
-			for (var pos=0; pos<shape_size*this.strings.length; pos++) {
-				var fret = start_fret+(pos%shape_size);
-				var strng = Math.floor(pos/shape_size);
+			while (pos = shape.getNext()) {
+				var fret = pos[0];
+				var strng = pos[1];
 				var cursor_note = this.strings[strng].at_fret(fret);
 
 				for(var i=0; i<intervals.length; i++) {
@@ -228,9 +296,11 @@ function play() {
 		scale_container.reset();
         nextTime = audioContext.currentTime;
         timerWorker.postMessage("start");
+		timer.start();
         return "Stop";
     } else {
         timerWorker.postMessage("stop");
+		timer.stop();
         return "Play";
     }
 }
@@ -323,11 +393,20 @@ function NoteCollection(fretboard_renderer) {
 		this.index = (this.index+this.dir)%this.notes.length;
 		if (this.index == this.notes.length-1) this.dir = -this.dir;
 		if (this.index == 0 && this.dir ==-1) this.dir = -this.dir; }
+
 	this.draw = function(){
 		for(i=0; i<this.notes.length; i++) {
 			var note = this.notes[i];
 			drawCircle(note.x, note.y, note.radius);
 		}
+	}
+	this.getRoots = function() {
+		var roots = []
+		for (var i=0; i<this.notes.length; i++){
+			if (this.notes[i].interval.degree == "1")
+				roots.push(this.notes[i]);
+		}
+		return roots;
 	}
 	this.setScale = function(notes) {
 		this.notes = notes;
@@ -336,35 +415,101 @@ function NoteCollection(fretboard_renderer) {
 		this.draw();
 	}
 	this.reset = function() {
-		this.index = 0;
+		this.index = this.notes.indexOf(this.getRoots()[0]);
 		this.dir = 1;
 	}
 }
-	function updateScale(note, scale, start_fret, end_fret) {
-		console.log(note, scale, start_fret, end_fret);
+	function updateScale(note, scale, shape) {
 		note = new Note(note+2)
 		var formula = {
-			"major":  new ScaleFormula("1 2 3 4 5 6 7"),
-			"minor":  new ScaleFormula("1 2 b3 4 5 b6 b7"),
-			"pent_major":  new ScaleFormula("1 2 3 5 6"),
-			"pent_minor":  new ScaleFormula("1 b3 4 5 b7")
+			"major":  new ScaleFormula("major", "1 2 3 4 5 6 7"),
+			"minor":  new ScaleFormula("minor", "1 2 b3 4 5 b6 b7"),
+			"pent_major":  new ScaleFormula("pent_major", "1 2 3 5 6"),
+			"pent_minor":  new ScaleFormula("pent_minor", "1 b3 4 5 b7")
 			}[scale];
+		var shape = {
+			"C": new Shape({name:"C", baseString:1, allFretsAbove:0, allFretsBelow:3}),
+			"A": new Shape({name:"A", baseString:1, allFretsAbove:3, allFretsBelow:1}),
+			"G": new Shape({name:"G", baseString:0, allFretsAbove:0, allFretsBelow:3}),
+			"E": new Shape({name:"E", baseString:0, allFretsAbove:2, allFretsBelow:1}),
+			"D": new Shape({name:"D", baseString:2, allFretsAbove:3, allFretsBelow:1})
+		}[shape]
 		var scale = new Scale(note, formula);
-		var notes = fretboard.getScale(scale, parseInt(start_fret), parseInt(end_fret));
+		var notes = fretboard.getScale(scale, shape);
 		scale_container.setScale(notes);
 	}
 	function processScaleForm(form) {
 		var form = $(this).parent();
 		var root = form.find("[name=root]").val();
 		var scale = form.find("[name=scale]").val();
-		var min_fret = form.find("[name=min_fret]").val();
-		var max_fret = form.find("[name=max_fret]").val();
-		updateScale(root, scale, min_fret, max_fret);
+		var shape = form.find("[name=shape]").val();
+		updateScale(root, scale, shape);
 
 	}
 
 	function togglePlay(button) {
 		$(this).text(play())
+	}
+
+	function Timer(options) {
+	  var timer,
+	  instance = this,
+	  updateStatus = options.onUpdateStatus || function () {},
+	  counterEnd = options.onCounterEnd || function () {};
+
+	  function incrementCounter() {
+		updateStatus(seconds);
+		seconds++;
+	  }
+
+	  this.start = function () {
+		clearInterval(timer);
+		timer = 0;
+		seconds = 0;
+		timer = setInterval(incrementCounter, 1000);
+	  };
+
+	  this.stop = function () {
+		clearInterval(timer);
+		counterEnd(seconds);
+	  };
+	};
+
+	function pad(n, width, z) {
+		z = z || '0';
+		n = n + '';
+		return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+	}
+ 
+	function updateTimer(seconds){
+		var minutes = pad(Math.floor(seconds/60),2);
+		var seconds = pad(seconds%60, 2);
+		$('.timer').text(String(minutes) + ":" + String(seconds));
+	}
+
+	timer = new Timer({onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
+	function finishTimer(seconds) {
+		var form = $(controls).parent();
+		var root = form.find("[name=root]").val();
+		var scale = form.find("[name=scale]").val();
+		var shape = form.find("[name=shape]").val();
+		addPractiseLogEntry(root, scale, shape, seconds, tempo);
+	}
+
+	function addPractiseLogEntry(root, scale, shape, seconds, tempo) {
+		var min_secs = parseInt($(".pl_footer :input").val());
+		if (seconds >= min_secs) {
+			var elem = $("<div></div>").addClass('pl_entry');
+			elem.append($("<p></p>").text(root + " " +scale));
+			elem.append($("<p></p>").text(shape+" Shape"));
+			elem.append($("<p></p>").text(tempo+"BPM"));
+
+			var minutes = pad(Math.floor(seconds/60),2);
+			var seconds = pad(seconds%60, 2);
+			var time = String(minutes) + ":" + String(seconds);
+			elem.append($("<p></p>").text(time));
+			$('.pl_entry_area').prepend(elem);
+		}
 	}
 
 	$(document).ready(function() {
@@ -386,7 +531,7 @@ function NoteCollection(fretboard_renderer) {
 		})();
 		audioContext = new AudioContext();
 
-		timerWorker = new Worker("metronomeworker.js");
+		timerWorker = new Worker("{{url_for('static', filename='js/metronomeworker.js')}}");
 
 		timerWorker.onmessage = function(e) {
 			if (e.data == "tick") {
@@ -405,10 +550,11 @@ function NoteCollection(fretboard_renderer) {
 		fb_rend.draw();
 		scale_container= new NoteCollection(fb_rend);
 
+		timer = new Timer({onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
+
 		$("[name=root]").change(processScaleForm);
 		$("[name=scale]").change(processScaleForm);
-		$("[name=min_fret]").change(processScaleForm);
-		$("[name=max_fret]").change(processScaleForm);
+		$("[name=shape]").change(processScaleForm);
 
 		$('.play').click(togglePlay);
 
@@ -417,15 +563,24 @@ function NoteCollection(fretboard_renderer) {
 			$('#showTempo').text(tempo);
 		});
 
-		updateScale("G", "major", 5, 9);
+		updateScale("G", "major", "D");
 
 		//var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"));
 		requestAnimationFrame(draw);
 	});
+
 	</script>
 	</head>
 	<body>
-		<canvas id="canvas" width=1500 height=500> </canvas>
+		<canvas id="canvas" width=1500 height=200> </canvas>
+		<div class="practise_log"> 
+			<div class="pl_header"> Practise Log </div>
+			<div class="pl_entry_area"> 
+			</div>
+			<div class="pl_footer">Log sessions longer than <input type="number" value="10" min="5" name="plog_secs"> seconds</div>
+		</div>
+		<div class="timer">00:00</div>
+		<div style="clear: both"></div>
 		<form name="controls">
 			<fieldset>
 				<select name="root">
@@ -448,8 +603,13 @@ function NoteCollection(fretboard_renderer) {
 					<option value="pent_major"> Major Pentatonic </option>
 					<option value="pent_minor"> Minor Pentatonic </option>
 				</select>
-				<input type="number" name="min_fret" value="5" min="0" max="21"> 
-				<input type="number" name="max_fret" value="9" min="0" max="21"> 
+				<select name="shape"> 
+					<option value="C"> C Shape </option>
+					<option value="A"> A Shape </option>
+					<option value="G"> G Shape </option>
+					<option value="E"> E Shape </option>
+					<option value="D"> D Shape </option>
+				</select>
 			</fieldset>
 			<fieldset>
 				  <div id="tempoBox">Tempo: <span id="showTempo">120</span>BPM <input id="tempo" type="range" min="30.0" max="160.0" step="1" value="120" style="height: 20px; width: 200px" ></div>
