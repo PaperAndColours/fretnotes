@@ -27,19 +27,89 @@ db = SQLAlchemy(app)
 
 
 #------DB Objects----- dbo
-class ImageElement(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
+len_v_short = 8;
+len_short = 32;
 
-	x = db.Column(db.Integer, nullable=False)
-	y = db.Column(db.Integer, nullable=False)
-	width = db.Column(db.Integer, nullable=False)
-	height = db.Column(db.Integer, nullable=False)
+shapes_users = db.Table(
+	'shapes_users',
+	db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+	db.Column('shape_id', db.Integer(), db.ForeignKey('shape.id')),
+)
+
+scales_users = db.Table(
+	'scales_users',
+	db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+	db.Column('scale_id', db.Integer(), db.ForeignKey('scale.id')),
+)
+
+exercise_templates_users = db.Table(
+	'exercise_templates_users',
+	db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+	db.Column('exercise_template_id', db.Integer(), db.ForeignKey('exercise_template.id')),
+)
+
+exercises_users = db.Table(
+	'exercises_users',
+	db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+	db.Column('exercise_id', db.Integer(), db.ForeignKey('exercise.id')),
+)
+
+practise_sessions_users = db.Table(
+	'practise_sessions_users',
+	db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+	db.Column('practise_session_id', db.Integer(), db.ForeignKey('practise_session.id')),
+)
 
 roles_users = db.Table(
 	'roles_users',
 	db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
 	db.Column('role_id', db.Integer(), db.ForeignKey('role.id')),
 )
+
+class Shape(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	name = db.Column(db.String(len_short), nullable=False);
+	base_string = db.Column(db.Integer, nullable=False);
+	
+	all_frets_above = db.Column(db.Integer)
+	all_frets_below = db.Column(db.Integer)
+	single_frets_above = db.Column(db.String)
+	single_frets_below = db.Column(db.String)
+
+	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
+
+class Scale(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	formula_name = db.Column(db.String(len_short), nullable=False);
+	note = db.Column(db.String(len_v_short), nullable=False)
+	formula = db.Column(db.String(len_short), nullable=False);
+
+	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
+
+class ExerciseTemplate(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	tempo = db.Column(db.Integer, nullable=False)
+	target_length = db.Column(db.Integer)
+
+	shape = db.relationship('Shape')
+	formula = db.relationship('Scale')
+
+class Exercise(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	tempo = db.Column(db.Integer)
+	target_length = db.Column(db.Integer)
+	length = db.Column(db.Integer)
+
+	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
+	exercise_template = db.relationship("ExerciseTemplate")
+	practise_session_id = db.Column(db.Integer, db.ForeignKey('practise_session.id'))
+	
+class PractiseSession(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	start = db.Column(db.DateTime, nullable=False)
+
+	exercises = db.relationship('Exercise')
+
 
 class Role(db.Model, RoleMixin):
 	id = db.Column(db.Integer, primary_key=True)
@@ -58,6 +128,12 @@ class User(db.Model, UserMixin):
 	active = db.Column(db.Boolean())
 	confirmed_at = db.Column(db.DateTime())
 	roles = db.relationship('Role', secondary=roles_users, backref=db.backref('users', lazy='dynamic'))
+
+	shapes = db.relationship('Shape', secondary=shapes_users, backref=db.backref('users', lazy='dynamic'))
+	scale_formulas = db.relationship('Scale', secondary=scales_users, backref=db.backref('users', lazy='dynamic'))
+	exercise_templates = db.relationship('ExerciseTemplate', secondary=exercise_templates_users, backref=db.backref('users', lazy='dynamic'))
+	exercises = db.relationship('Exercise', secondary=exercises_users, backref=db.backref('users', lazy='dynamic'))
+	practise_sessions = db.relationship('PractiseSession', secondary=practise_sessions_users, backref=db.backref('users', lazy='dynamic'))
 
 	def __str__(self):
 		return self.email
