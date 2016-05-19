@@ -1,2 +1,6 @@
+db_repository
+env
+db.db
 3rdParty
 *.wav
+*.pyc

@@ -1,8 +1,9 @@
 #character-encoding: utf-8
 #Flask imports
-from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
+from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from contextlib import closing
 from flask.ext.sqlalchemy import SQLAlchemy
+from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import and_, or_, func
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy import between
@@ -25,6 +26,15 @@ if ('SENDGRID_USERNAME' in app.config):
 	sg = sendgrid.SendGridClient(app.config['SENDGRID_USERNAME'], app.config['SENDGRID_PASSWORD'])
 db = SQLAlchemy(app)
 
+
+#----DBO Mixins -------- mx
+class Serializer(object):
+    def serialize(self):
+        return {c: getattr(self, c) for c in inspect(self).attrs.keys()}
+
+    @staticmethod
+    def serialize_list(l):
+        return [m.serialize() for m in l]
 
 #------DB Objects----- dbo
 len_v_short = 8;
@@ -66,7 +76,7 @@ roles_users = db.Table(
 	db.Column('role_id', db.Integer(), db.ForeignKey('role.id')),
 )
 
-class Shape(db.Model):
+class Shape(db.Model, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
 	name = db.Column(db.String(len_short), nullable=False);
 	base_string = db.Column(db.Integer, nullable=False);
@@ -76,25 +86,30 @@ class Shape(db.Model):
 	single_frets_above = db.Column(db.String)
 	single_frets_below = db.Column(db.String)
 
-	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
 
-class Scale(db.Model):
+class Scale(db.Model, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
-	formula_name = db.Column(db.String(len_short), nullable=False);
 	note = db.Column(db.String(len_v_short), nullable=False)
+
+	scale_formula_id = db.Column(db.Integer, db.ForeignKey('scale_formula.id'))
+	scale_formula = db.relationship("ScaleFormula")
+
+class ScaleFormula(db.Model, Serializer):
+	id = db.Column(db.Integer, primary_key=True)
+	name = db.Column(db.String(len_short), nullable=False);
 	formula = db.Column(db.String(len_short), nullable=False);
 
-	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
-
-class ExerciseTemplate(db.Model):
+class ExerciseTemplate(db.Model, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
 	tempo = db.Column(db.Integer, nullable=False)
 	target_length = db.Column(db.Integer)
 
+	scale_id = db.Column(db.Integer, db.ForeignKey('scale.id'))
 	shape = db.relationship('Shape')
-	formula = db.relationship('Scale')
+	shape_id = db.Column(db.Integer, db.ForeignKey('shape.id'))
+	scale = db.relationship('Scale')
 
-class Exercise(db.Model):
+class Exercise(db.Model, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
 	tempo = db.Column(db.Integer)
 	target_length = db.Column(db.Integer)
@@ -103,15 +118,41 @@ class Exercise(db.Model):
 	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
 	exercise_template = db.relationship("ExerciseTemplate")
 	practise_session_id = db.Column(db.Integer, db.ForeignKey('practise_session.id'))
+
+	def serialize(self):
+		data = Serializer.serialize(self)
+		del data['users']
+		data['exercise_template'] = Serializer.serialize(data['exercise_template'])
+		del data['exercise_template']['users']
+		data['exercise_template']['scale'] = Serializer.serialize(data['exercise_template']['scale'])
+		del data['exercise_template']['scale']['users']
+		data['exercise_template']['scale']['scale_formula'] = Serializer.serialize(data['exercise_template']['scale']['scale_formula'])
+		data['exercise_template']['shape'] = Serializer.serialize(data['exercise_template']['shape']) 
+		del data['exercise_template']['shape']['users']
+
+		#Perhaps re-add later, removing now to keep things simple:
+		del data['exercise_template_id']
+		del data['id']
+		del data['exercise_template']['id']
+		del data['exercise_template']['scale_id']
+		del data['exercise_template']['scale']['id']
+		del data['exercise_template']['scale']['scale_formula_id']
+		del data['exercise_template']['scale']['scale_formula']['id']
+		del data['exercise_template']['shape']['id']
+		del data['exercise_template']['shape_id']
+		del data['practise_session_id']
+
+		print data
+		return data
 	
-class PractiseSession(db.Model):
+class PractiseSession(db.Model, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
 	start = db.Column(db.DateTime, nullable=False)
 
 	exercises = db.relationship('Exercise')
 
 
-class Role(db.Model, RoleMixin):
+class Role(db.Model, RoleMixin, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
 	name = db.Column(db.String(80), unique=True)
 	description = db.Column(db.String(255))
@@ -175,6 +216,27 @@ admin.add_view(MyModelView(User, db.session))
 @app.route('/')
 def index():
 	return render_template("main.html")
+
+
+@app.route('/json/exercise/<id>')
+def ajax_exercise(id):
+	exercise = db.session.query(Exercise).filter(Exercise.id==id).join(ExerciseTemplate).join(Shape).join(Scale).join(ScaleFormula).one()
+
+	t = exercise.exercise_template
+	shape = t.shape
+	scale = t.scale
+
+
+	#name = db.Column(db.String(len_short), nullable=False);
+	#base_string = db.Column(db.Integer, nullable=False);
+	
+	#all_frets_above = db.Column(db.Integer)
+	#all_frets_below = db.Column(db.Integer)
+	#single_frets_above = db.Column(db.String)
+	#single_frets_below = db.Column(db.String)
+
+	json = jsonify(exercise.serialize())
+	return json
 
 @app.route('/login')
 def login():
