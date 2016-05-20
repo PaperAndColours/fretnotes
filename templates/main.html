@@ -419,7 +419,7 @@ function NoteCollection(fretboard_renderer) {
 		this.dir = 1;
 	}
 }
-	function updateScale(note, scale, shape) {
+	function updateScaleFromForm(note, scale, shape) {
 		note = new Note(note+2)
 		var formula = {
 			"major":  new ScaleFormula("major", "1 2 3 4 5 6 7"),
@@ -434,16 +434,20 @@ function NoteCollection(fretboard_renderer) {
 			"E": new Shape({name:"E", baseString:0, allFretsAbove:2, allFretsBelow:1}),
 			"D": new Shape({name:"D", baseString:2, allFretsAbove:3, allFretsBelow:1})
 		}[shape]
-		var scale = new Scale(note, formula);
+		updateScale(note, formula, shape)
+	}
+	function updateScale(root, formula, shape) {
+		var scale = new Scale(root, formula);
 		var notes = fretboard.getScale(scale, shape);
 		scale_container.setScale(notes);
+
 	}
 	function processScaleForm(form) {
 		var form = $(this).parent();
 		var root = form.find("[name=root]").val();
 		var scale = form.find("[name=scale]").val();
 		var shape = form.find("[name=shape]").val();
-		updateScale(root, scale, shape);
+		updateScaleFromForm(root, scale, shape);
 
 	}
 
@@ -563,7 +567,22 @@ function NoteCollection(fretboard_renderer) {
 			$('#showTempo').text(tempo);
 		});
 
-		updateScale("G", "major", "D");
+		$.get("/json/exercise/1", function(data) {
+			console.log(data);
+			var shape_json = data.exercise_template.shape;
+			var shape = new Shape({	name:shape_json.name, 
+									baseString: shape_json.base_string, 
+									allFretsAbove: shape_json.all_frets_above,
+									allFretsBelow: shape_json.all_frets_below,
+									singleFretsAbove: shape_json.single_frets_above,
+									singleFretsBelow: shape_json.single_frets_below
+									});
+			var note = new Note(data.exercise_template.scale.note)
+			var formula = new ScaleFormula(data.exercise_template.scale.scale_formula.name, data.exercise_template.scale.scale_formula.formula)
+			updateScale(note, formula, shape)
+		});
+
+		//updateScaleFromForm("G", "major", "D");
 
 		//var scale = new Scale(new Note("A2"), new ScaleFormula("1 b3 b5 bb7"));
 		requestAnimationFrame(draw);

@@ -114,6 +114,8 @@ class Exercise(db.Model, Serializer):
 	tempo = db.Column(db.Integer)
 	target_length = db.Column(db.Integer)
 	length = db.Column(db.Integer)
+	started = db.Column(db.Boolean, default=0)
+	completed = db.Column(db.Boolean, default=0)
 
 	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
 	exercise_template = db.relationship("ExerciseTemplate")
@@ -179,6 +181,7 @@ class User(db.Model, UserMixin):
 	def __str__(self):
 		return self.email
 	
+#Shape Scale ScaleFormula ExerciseTemplate Exercise PractiseSession
 #------Security--------- se
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
@@ -209,6 +212,13 @@ class MyModelView(ModelView):
 			else:
 				return redirect(url_for('security.login', next=request.url))
 
+
+admin.add_view(MyModelView(Shape, db.session))
+admin.add_view(MyModelView(PractiseSession, db.session))
+admin.add_view(MyModelView(Exercise , db.session))
+admin.add_view(MyModelView(ExerciseTemplate , db.session))
+admin.add_view(MyModelView(ScaleFormula , db.session))
+admin.add_view(MyModelView(Scale , db.session))
 admin.add_view(MyModelView(Role, db.session))
 admin.add_view(MyModelView(User, db.session))
 
@@ -217,6 +227,9 @@ admin.add_view(MyModelView(User, db.session))
 def index():
 	return render_template("main.html")
 
+@app.route('/exercise')
+def exercise():
+	return render_template("exercise.html")
 
 @app.route('/json/exercise/<id>')
 def ajax_exercise(id):
