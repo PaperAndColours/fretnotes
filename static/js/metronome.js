@@ -1,6 +1,6 @@
 var timer = null;
 var tempo = 120.0;          // tempo (in beats per minute)
-var lookahead = 25.0;       // How frequently to call scheduling function 
+var lookahead = 1.0;       // How frequently to call scheduling function 
 var noteLength = 0.05;
 var scheduleAheadTime = 0.1;    // How far ahead to schedule audio (sec)
 var lastEvent = -1;
@@ -10,6 +10,20 @@ var nextEvent = 0;
 var timeWorker = null;
 var isPlaying = false;
 var animDelay = 500;
+
+var metronome_buffer = null;
+
+
+
+window.requestAnimFrame = (function(){
+  return  window.requestAnimationFrame       ||
+		  window.webkitRequestAnimationFrame ||
+		  window.mozRequestAnimationFrame    ||
+		  function( callback ){
+			window.setTimeout(callback, 1000 / 60);
+		  };
+})();
+
 
 function play() {
     isPlaying = !isPlaying;
@@ -31,12 +45,11 @@ function play() {
 function scheduler() {
     while (nextTime < audioContext.currentTime + scheduleAheadTime ) {
 		eventsInQueue.push( { note: nextEvent, time: nextTime } );
-		var osc = audioContext.createOscillator();
-		osc.connect( audioContext.destination );
-		osc.frequency.value = 880.0;
-		osc.start( nextTime );
-		osc.stop( nextTime + noteLength );
 
+		metronome_sound = audioContext.createBufferSource();
+		metronome_sound.buffer = metronome_buffer;
+		metronome_sound.connect(audioContext.destination);
+		metronome_sound.start(0);
 		var secondsPerBeat = 60.0 / tempo;    // current tempo
 		nextTime += 1 * secondsPerBeat;    
 		nextEvent++;
@@ -59,3 +72,27 @@ function draw() {
 
     requestAnimFrame(draw);
 }
+
+function soundsLoaded(bufferList) {
+	metronome_buffer = bufferList[0]
+
+}
+
+audioContext = new AudioContext();
+bufferLoader = new BufferLoader(audioContext, 
+	['/static/sounds/metronome.wav'],
+	soundsLoaded
+	);
+
+timerWorker = new Worker("static/js/metronomeworker.js");
+timerWorker.postMessage({"interval":lookahead});
+timerWorker.onmessage = function(e) {
+	if (e.data == "tick") {
+		// console.log("tick!");
+		scheduler();
+	}
+	else
+		console.log("message: " + e.data);
+};
+bufferLoader.load();
+requestAnimFrame(draw);    // start the drawing loop.
