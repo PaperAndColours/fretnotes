@@ -1,0 +1,35 @@
+<!DOCTYLE HTML>
+<html>
+	<head>
+	<link rel="stylesheet" href="{{url_for('static', filename='css/style.css')}}">
+	<script src="{{url_for('static', filename='js/jquery.js')}}"> </script>
+	<script src="{{url_for('static', filename='js/controls.js')}}"> </script>
+	<script>
+
+	$(document).ready(function() {
+		$('#tempoBox :input').on('input', function(e) {
+			tempo = $(this).val(); 
+			$('#showTempo').text(tempo);
+		});
+	});
+
+	</script>
+	</head>
+	<body>
+		{% for template in exercise_templates %}
+			
+			{{template.tempo}}
+
+		{% endfor %}
+		<h1> Create Exercise Template </h1>
+		<form name="controls", method="POST">
+			<fieldset>
+				{{form.root.label}} {{form.root()}}
+				{{form.accidental.label}} {{form.accidental()}}
+				{{form.shape.label}} {{form.shape()}}
+				{{form.scale.label}} {{form.scale()}}
+				{{form.tempo.label}} {{form.tempo()}}
+			  <button> Submit </button>
+		</form>
+	</body>
+</html>

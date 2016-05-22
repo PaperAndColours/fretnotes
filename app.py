@@ -8,6 +8,8 @@ from sqlalchemy.sql import and_, or_, func
 from sqlalchemy.sql.functions import coalesce
 from sqlalchemy import between
 
+from wtforms import Form, SelectField, BooleanField, StringField, DateField, FloatField, IntegerField, validators, ValidationError
+
 from flask.ext.security import Security, SQLAlchemyUserDatastore, UserMixin, RoleMixin, login_required, current_user
 from flask_security.utils import encrypt_password
 
@@ -222,6 +224,16 @@ admin.add_view(MyModelView(Scale , db.session))
 admin.add_view(MyModelView(Role, db.session))
 admin.add_view(MyModelView(User, db.session))
 
+#------Forms------- fo
+class ExerciseTemplateForm(Form):
+	id = IntegerField("id")
+	root = SelectField("Root", coerce=int)
+	accidental = SelectField("Accidental", coerce=int)
+	shape = SelectField("Shape")
+	scale = SelectField("Scale")
+	tempo = IntegerField("Tempo")
+
+
 #------Routing----- ro
 @app.route('/')
 def index():
@@ -231,22 +243,41 @@ def index():
 def exercise():
 	return render_template("exercise.html")
 
+def printDict(source, indent=0):
+	idict = dict(source)
+	for key, arg in idict.iteritems():
+		if hasattr(arg, '__getitem__'):
+			print "yeah"
+			return printDict(arg, indent+1)
+		else:
+			print "\t"*indent, key, arg
+
+	
+roots = ["A", "B", "C", "D", "E", "F", "G"]
+accidentals = ["", "#", "b"]
+@app.route('/design', methods=["POST", "GET"])
+def design():
+	form = ExerciseTemplateForm()
+	form.root.choices=(("0", "A"), ("1", "B"), ("2", "C"), ("3", "D"), ("4","E"), ("5", "F"), ("6", "G"))
+	form.accidental.choices=((0, ""), (1, "#"), (2, "b"))
+	form.shape.choices=db.session.query(Shape.id, Shape.name)
+	form.scale.choices=db.session.query(ScaleFormula.id, ScaleFormula.name)
+	if request.method=="POST" and form.validate():
+		form.process(request.form)
+		shape = db.session.query(Shape).filter(Shape.id==form.shape.data)
+		scaleFormula = db.session.query(ScaleFormula).filter(ScaleFormula.id==form.scale.data)
+		note = roots[form.root.data]+accidentals[form.accidental.data]+"2"
+		scale = Scale(scale_formula = scaleFormula, note=note)
+		db.session.add(scale)
+		exercise_template = ExerciseTemplate(tempo=form.tempo.data, scale=scale, shape=shape)
+		db.session.add(exercise_template)
+		db.session.commit()
+	templates = db.session.query(ExerciseTemplate)
+	return render_template("design.html", form=form, exercise_templates=templates)
+
 @app.route('/json/exercise/<id>')
 def ajax_exercise(id):
 	exercise = db.session.query(Exercise).filter(Exercise.id==id).join(ExerciseTemplate).join(Shape).join(Scale).join(ScaleFormula).one()
-
-	t = exercise.exercise_template
-	shape = t.shape
-	scale = t.scale
-
-
-	#name = db.Column(db.String(len_short), nullable=False);
-	#base_string = db.Column(db.Integer, nullable=False);
-	
-	#all_frets_above = db.Column(db.Integer)
-	#all_frets_below = db.Column(db.Integer)
-	#single_frets_above = db.Column(db.String)
-	#single_frets_below = db.Column(db.String)
 
 	json = jsonify(exercise.serialize())
 	return json
