@@ -88,9 +88,10 @@ function Fretboard() {
 			var fret = pos[0];
 			var strng = pos[1];
 			var cursor_note = this.strings[strng].at_fret(fret);
-
 			for(var i=0; i<intervals.length; i++) {
 				var scale_note = root.add(intervals[i]);
+				console.log(scale_note.note() + " " + cursor_note.note())
+				console.log(scale_note.semitones() + " " + cursor_note.semitones())
 				if (cursor_note.semitones() == scale_note.semitones()) {
 					var position = this.renderer.getPos(strng, fret);
 					var x = position[0];
