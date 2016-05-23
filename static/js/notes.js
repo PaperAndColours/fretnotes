@@ -434,6 +434,8 @@ function Note(note) {
 		var value =  degreeToSemitones(this.note_deg) + this.accidentals;
 		if (value < 0)
 			value += 12;
+		if (value > 11)
+			value -= 12;
 		return value
 	}
 	this.fullSemitones = function() {
