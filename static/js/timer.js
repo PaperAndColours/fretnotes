@@ -3,6 +3,7 @@ function Timer(options) {
   instance = this,
   updateStatus = options.onUpdateStatus || function () {},
   counterEnd = options.onCounterEnd || function () {};
+  seconds = 0;
 
   function incrementCounter() {
 	updateStatus(seconds);
@@ -12,7 +13,6 @@ function Timer(options) {
   this.start = function () {
 	clearInterval(timer);
 	timer = 0;
-	seconds = 0;
 	timer = setInterval(incrementCounter, 1000);
   };
 
@@ -20,6 +20,9 @@ function Timer(options) {
 	clearInterval(timer);
 	counterEnd(seconds);
   };
+  this.get = function() {
+  	return seconds;
+  }
 };
 
 function pad(n, width, z) {
@@ -36,9 +39,8 @@ function updateTimer(seconds){
 
 timer = new Timer({onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
 function finishTimer(seconds) {
-	var form = $(controls).parent();
-	var root = form.find("[name=root]").val();
-	var scale = form.find("[name=scale]").val();
-	var shape = form.find("[name=shape]").val();
-	addPractiseLogEntry(root, scale, shape, seconds, tempo);
+		$.post("/json/exercise/"+exerciseID, 
+				{ updateLength: seconds,
+				  completed: false}
+			);
 }

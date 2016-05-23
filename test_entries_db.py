@@ -25,6 +25,6 @@ session.add_all([a_minor, Cs_major, Eb_major])
 exT1 = ExerciseTemplate(shape=g_Shape, scale=Eb_major, tempo=120)
 ex = Exercise(exercise_template=exT1, tempo=100)
 practise_session = PractiseSession(start=datetime.now(), exercises=[ex])
-session.add_all([exT1, ex, practise_session])
+#session.add_all([exT1, ex, practise_session])
 
 session.commit()

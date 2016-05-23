@@ -34,7 +34,7 @@ function play() {
         nextTime = audioContext.currentTime;
         timerWorker.postMessage("start");
 		timer.start();
-        return "Stop";
+        return "Pause";
     } else {
         timerWorker.postMessage("stop");
 		timer.stop();
@@ -84,7 +84,7 @@ bufferLoader = new BufferLoader(audioContext,
 	soundsLoaded
 	);
 
-timerWorker = new Worker("static/js/metronomeworker.js");
+timerWorker = new Worker(metronomeWorkerPath);
 timerWorker.postMessage({"interval":lookahead});
 timerWorker.onmessage = function(e) {
 	if (e.data == "tick") {

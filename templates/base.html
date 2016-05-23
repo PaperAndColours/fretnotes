@@ -1,0 +1,25 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title> The Almighty Fretboard Trainer </title>
+<link rel="stylesheet" href="{{url_for('static', filename='css/style.css')}}">
+<script src="{{url_for('static', filename='js/jquery.js')}}"> </script>
+{% block head %}
+{% endblock %}
+</head>
+<body><div id="container">
+	<div id="header">
+		<ul>
+			<li> The Almighty Fretboard Trainer </li>
+			<li> Home </li>
+			<li> <a href="{{url_for('design')}}"> Design </a></li>
+			<li> <a href="{{url_for('practise')}}"> Practise </a> </li>
+		</ul>
+	</div>
+	<div id="content">
+		{% block body %}
+		{% endblock %}
+	</div>
+</div>
+</body>
+</html>

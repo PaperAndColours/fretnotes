@@ -1,8 +1,5 @@
-<!DOCTYLE HTML>
-<html>
-	<head>
-	<link rel="stylesheet" href="{{url_for('static', filename='css/style.css')}}">
-	<script src="{{url_for('static', filename='js/jquery.js')}}"> </script>
+{% extends 'base.html' %}
+{% block head %}
 	<script src="{{url_for('static', filename='js/controls.js')}}"> </script>
 	<script>
 
@@ -11,25 +8,58 @@
 			tempo = $(this).val(); 
 			$('#showTempo').text(tempo);
 		});
+	
 	});
 
 	</script>
-	</head>
-	<body>
-		{% for template in exercise_templates %}
-			
-			{{template.tempo}}
+{% endblock %}
+{% block body %}
+	{% for template in exercise_templates %}
+		<div class="ex_template">
+			<div class="tpl_id hidden">
+				{{template.id}}	
+			</div>
+			<h3 class="tpl_desc">
+				{{template.scale.note}}
+				{{template.scale.scale_formula.name}}
+				{{template.shape.name}}
+			</h3>
+			<div class="tpl_tempo">	
+				{{template.tempo}}bpm
+			</div>
+			<div class="tpl_review">
+				Review_required: O
+			</div>
+			<div class="tpl_exercises">
+				<h4> Exercises </h4>
+				{% for exercise in template.exercises%}
+					<div class="exercise">
+						{{exercise.length|timer}}
+						{{exercise.tempo}}bpm 
+						{{exercise.date|timedelta}}
+						{% if exercise.completed==True %}
+						Completed
+						{% else %}
+						<a href="{{url_for('continueExercise', exercise_id=exercise.id)}}"> Resume </a>
+						{% endif %}
+					</div>
+				{%endfor %}
+				<a href="{{url_for('makeExercise', template_id=template.id)}}">
+					Play >>
+				</a>
+			</div>
+		</div>
 
-		{% endfor %}
-		<h1> Create Exercise Template </h1>
-		<form name="controls", method="POST">
-			<fieldset>
-				{{form.root.label}} {{form.root()}}
-				{{form.accidental.label}} {{form.accidental()}}
-				{{form.shape.label}} {{form.shape()}}
-				{{form.scale.label}} {{form.scale()}}
-				{{form.tempo.label}} {{form.tempo()}}
-			  <button> Submit </button>
-		</form>
-	</body>
-</html>
+	{% endfor %}
+	<div style="clear:both"></div>
+	<h1> Create Exercise Template </h1>
+	<form name="controls", method="POST">
+		<fieldset>
+			{{form.root.label}} {{form.root()}}
+			{{form.accidental.label}} {{form.accidental()}}
+			{{form.shape.label}} {{form.shape()}}
+			{{form.scale.label}} {{form.scale()}}
+			{{form.tempo.label}} {{form.tempo()}}
+		  <button> Submit </button>
+	</form>
+{% endblock %}

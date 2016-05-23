@@ -431,7 +431,10 @@ function Note(note) {
 		return this.note_deg + this.octave*7;
 	}
 	this.semitones =  function() {
-		return degreeToSemitones(this.note_deg) + this.accidentals;
+		var value =  degreeToSemitones(this.note_deg) + this.accidentals;
+		if (value < 0)
+			value += 12;
+		return value
 	}
 	this.fullSemitones = function() {
 		return degreeToSemitones(this.note_deg) + this.accidentals + this.octave*12;

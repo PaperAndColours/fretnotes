@@ -1,113 +1,87 @@
-<!DOCTYLE HTML>
-<html>
-	<head>
-	<link rel="stylesheet" href="{{url_for('static', filename='css/style.css')}}">
-	<script src="{{url_for('static', filename='js/jquery.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/bufferLoader.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/metronome.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/rendering.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/notes.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/fretboard.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/timer.js')}}"> </script>
-	<script src="{{url_for('static', filename='js/controls.js')}}"> </script>
-	<script>
+{% extends 'base.html' %}
+{% block head %}
+<script>
+    var metronomeWorkerPath = "{{url_for('static', filename='js/metronomeworker.js')}}";
+    {% if exercise_id %}
+	    var exerciseID = {{exercise_id}};
+    {% endif %}
+</script>
+
+<script src="{{url_for('static', filename='js/bufferLoader.js')}}"> </script>
+<script src="{{url_for('static', filename='js/metronome.js')}}"> </script>
+<script src="{{url_for('static', filename='js/rendering.js')}}"> </script>
+<script src="{{url_for('static', filename='js/notes.js')}}"> </script>
+<script src="{{url_for('static', filename='js/fretboard.js')}}"> </script>
+<script src="{{url_for('static', filename='js/timer.js')}}"> </script>
+<script src="{{url_for('static', filename='js/controls.js')}}"> </script>
+<script>
 
 
-	var scale_container = null;
+var scale_container = null;
 
 
-	$(document).ready(function() {
-		var canvas = document.getElementById('canvas');
-		canvasWidth = canvas.width;
-		canvasHeight = canvas.height;
-		context = canvas.getContext('2d');
+$(document).ready(function() {
+	var canvas = document.getElementById('canvas');
+	canvasWidth = canvas.width;
+	canvasHeight = canvas.height;
+	context = canvas.getContext('2d');
 
 
-		fretboard = new Fretboard();
-		fb_rend = new FretboardRenderer(fretboard);
-		fb_rend.init();
-		fb_rend.draw();
-		scale_container= new NoteCollection(fb_rend);
+	fretboard = new Fretboard();
+	fb_rend = new FretboardRenderer(fretboard);
+	fb_rend.init();
+	fb_rend.draw();
+	scale_container= new NoteCollection(fb_rend);
 
-		timer = new Timer({onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
+	timer = new Timer({onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
 
-		$("[name=root]").change(processScaleForm);
-		$("[name=scale]").change(processScaleForm);
-		$("[name=shape]").change(processScaleForm);
+	$("[name=root]").change(processScaleForm);
+	$("[name=scale]").change(processScaleForm);
+	$("[name=shape]").change(processScaleForm);
 
-		$('.play').click(togglePlay);
-
-		$('#tempoBox :input').on('input', function(e) {
-			tempo = $(this).val(); 
-			$('#showTempo').text(tempo);
-		});
-
-		updateScaleFromForm("G", "major", "D");
-		$.get("/json/exercise/1", function(data) {
-			console.log(data);
-			var shape_json = data.exercise_template.shape;
-			var shape = new Shape({	name:shape_json.name, 
-									baseString: shape_json.base_string, 
-									allFretsAbove: shape_json.all_frets_above,
-									allFretsBelow: shape_json.all_frets_below,
-									singleFretsAbove: shape_json.single_frets_above,
-									singleFretsBelow: shape_json.single_frets_below
-									});
-			var note = new Note(data.exercise_template.scale.note)
-			var formula = new ScaleFormula(data.exercise_template.scale.scale_formula.name, data.exercise_template.scale.scale_formula.formula)
-			updateScale(note, formula, shape)
-		});
-		
-
-
+	$('.play').click(togglePlay);
+	$('.finish').click(function() {
+	    $.post("/json/exercise/"+exerciseID, 
+		    { updateLength: timer.get(),
+		     completed: true}
+	    );
 	});
 
+
+	$('#tempoBox :input').on('input', function(e) {
+		tempo = $(this).val(); 
+		$('#showTempo').text(tempo);
+	});
+
+	updateScaleFromForm("G", "major", "D");
+	$.get("/json/exercise/"+exerciseID, function(data) {
+		console.log(data);
+		var shape_json = data.exercise_template.shape;
+		var shape = new Shape({	name:shape_json.name, 
+								baseString: shape_json.base_string, 
+								allFretsAbove: shape_json.all_frets_above,
+								allFretsBelow: shape_json.all_frets_below,
+								singleFretsAbove: shape_json.single_frets_above,
+								singleFretsBelow: shape_json.single_frets_below
+								});
+		var note = new Note(data.exercise_template.scale.note)
+		var formula = new ScaleFormula(data.exercise_template.scale.scale_formula.name, data.exercise_template.scale.scale_formula.formula)
+		updateScale(note, formula, shape)
+		$("#exercise_data").text(note.note() + " " + formula.name + " " +  shape.name);
+	});
+	
+
+
+});
+
 	</script>
-	</head>
-	<body>
-		<canvas id="canvas" width=1500 height=200> </canvas>
-		<div class="practise_log"> 
-			<div class="pl_header"> Practise Log </div>
-			<div class="pl_entry_area"> 
-			</div>
-			<div class="pl_footer">Log sessions longer than <input type="number" value="10" min="5" name="plog_secs"> seconds</div>
-		</div>
-		<div class="timer">00:00</div>
-		<div style="clear: both"></div>
-		<form name="controls">
-			<fieldset>
-				<select name="root">
-					<option value="C"> C </option>
-					<option value="C#"> C# </option>
-					<option value="D"> D </option>
-					<option value="D#"> D# </option>
-					<option value="E"> E </option>
-					<option value="F"> F </option>
-					<option value="F#"> F# </option>
-					<option value="G"> G </option>
-					<option value="G#"> G# </option>
-					<option value="A"> A </option>
-					<option value="A#"> A# </option>
-					<option value="B"> B </option>
-				</select>
-				<select name="scale">
-					<option value="major"> Major </option>
-					<option value="minor"> Minor </option>
-					<option value="pent_major"> Major Pentatonic </option>
-					<option value="pent_minor"> Minor Pentatonic </option>
-				</select>
-				<select name="shape"> 
-					<option value="C"> C Shape </option>
-					<option value="A"> A Shape </option>
-					<option value="G"> G Shape </option>
-					<option value="E"> E Shape </option>
-					<option value="D"> D Shape </option>
-				</select>
-			</fieldset>
-			<fieldset>
-				  <div id="tempoBox">Tempo: <span id="showTempo">120</span>BPM <input id="tempo" type="range" min="30.0" max="160.0" step="1" value="120" style="height: 20px; width: 200px" ></div>
-				<div><a class="play" href="#">Play</a></div>
-			</fieldset>
-		</form>
-	</body>
-</html>
+{% endblock %}
+{% block body %}
+<div id="exercise_id hidden"> {{id}} </div>
+<canvas id="canvas" width=1500 height=200> </canvas>
+<div class="timer">00:00</div>
+<div id="exercise_data"> </div>
+<div style="clear: both"></div>
+	<div><a class="play" href="#">Play</a></div>
+	<div><a class="finish" href="#">Finish</a></div>
+{% endblock %}

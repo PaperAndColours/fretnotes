@@ -90,13 +90,13 @@ function Fretboard() {
 			var cursor_note = this.strings[strng].at_fret(fret);
 
 			for(var i=0; i<intervals.length; i++) {
-			var scale_note = root.add(intervals[i]);
-			if (cursor_note.semitones() == scale_note.semitones()) {
-				var position = this.renderer.getPos(strng, fret);
-				var x = position[0];
-				var y = position[1];
-				var radius = this.renderer.calcNoteSize(fret);
-				fretNotes.push(new FretNote(cursor_note, intervals[i], fret, strng, x, y, radius));
+				var scale_note = root.add(intervals[i]);
+				if (cursor_note.semitones() == scale_note.semitones()) {
+					var position = this.renderer.getPos(strng, fret);
+					var x = position[0];
+					var y = position[1];
+					var radius = this.renderer.calcNoteSize(fret);
+					fretNotes.push(new FretNote(scale_note, intervals[i], fret, strng, x, y, radius));
 				}
 			}
 		}

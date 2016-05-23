@@ -1,3 +1,35 @@
+body, html {
+margin: 0;
+padding: 0;
+}
+
+#container {
+margin: 0;
+padding: 0;
+}
+
+#header {
+margin: 0;
+padding: 0;
+width: 100%;
+background-color: #f9f9f9;
+}
+
+#header ul {
+margin-top: 0;
+padding: 10px;
+font-size: 13pt;
+}
+
+#header li {
+display: inline;
+padding-right: 100px;
+padding-left: 20px;
+border-right: 1px solid black;
+}
+
+
+
 .practise_log {
 float: right;
 width: 500px;
@@ -35,3 +67,34 @@ border-bottom: 1px solid #555;
 padding: 10px;
 border-bottom: 1px solid black;
 }
+
+.ex_template {
+	border: 1px solid black;
+	padding: 10px;
+	margin: 10px;
+	float: left;
+	
+}
+.tpl_tempo {
+float: right;
+clear: both;
+}
+.tpl_review {
+float: right;
+clear: both;
+}
+.tpl_desc {
+width: 100%;
+text-align: center;
+}
+
+.hidden {
+	display: none;
+}
+#exercise_data {
+	font-size: 19pt;
+	text-align: center;
+}
+.
+
+

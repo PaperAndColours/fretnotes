@@ -19,7 +19,9 @@ from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.fileadmin import FileAdmin
 
 import os.path as osp
-
+import datetime
+from datetime import date, timedelta
+from dateutils import relativedelta
 
 app = Flask(__name__)
 app.config.from_object("config")
@@ -115,12 +117,13 @@ class Exercise(db.Model, Serializer):
 	id = db.Column(db.Integer, primary_key=True)
 	tempo = db.Column(db.Integer)
 	target_length = db.Column(db.Integer)
-	length = db.Column(db.Integer)
-	started = db.Column(db.Boolean, default=0)
+	length = db.Column(db.Integer, default=0)
+	percent_completed = db.Column(db.Integer)
 	completed = db.Column(db.Boolean, default=0)
+	date = db.Column(db.DateTime)
 
 	exercise_template_id = db.Column(db.Integer, db.ForeignKey('exercise_template.id'))
-	exercise_template = db.relationship("ExerciseTemplate")
+	exercise_template = db.relationship("ExerciseTemplate", backref="exercises")
 	practise_session_id = db.Column(db.Integer, db.ForeignKey('practise_session.id'))
 
 	def serialize(self):
@@ -138,6 +141,7 @@ class Exercise(db.Model, Serializer):
 		del data['exercise_template_id']
 		del data['id']
 		del data['exercise_template']['id']
+		del data['exercise_template']['exercises']
 		del data['exercise_template']['scale_id']
 		del data['exercise_template']['scale']['id']
 		del data['exercise_template']['scale']['scale_formula_id']
@@ -146,7 +150,6 @@ class Exercise(db.Model, Serializer):
 		del data['exercise_template']['shape_id']
 		del data['practise_session_id']
 
-		print data
 		return data
 	
 class PractiseSession(db.Model, Serializer):
@@ -226,13 +229,72 @@ admin.add_view(MyModelView(User, db.session))
 
 #------Forms------- fo
 class ExerciseTemplateForm(Form):
-	id = IntegerField("id")
 	root = SelectField("Root", coerce=int)
 	accidental = SelectField("Accidental", coerce=int)
-	shape = SelectField("Shape")
-	scale = SelectField("Scale")
+	shape = SelectField("Shape", coerce=int)
+	scale = SelectField("Scale", coerce=int)
 	tempo = IntegerField("Tempo")
 
+#-----Filters------- fi
+@app.template_filter('completed')
+def format_completed(value):
+	print value
+	if value==True:
+		return "Completed"
+	else:
+		return ""
+
+@app.template_filter('timer')
+def format_timer(seconds):
+	minutes = str(seconds / 60).zfill(2)
+	seconds = str(seconds%60).zfill(2)
+	return minutes + ":" + seconds
+
+@app.template_filter('strftime')
+def _jinja2_filter_datetime(date):
+	return date.strftime('%H:%M %d %b %y ')	
+
+@app.template_filter('timedelta')
+def format_timedelta(target):
+	now = datetime.datetime.now()
+	difference = relativedelta(now, target)
+	if difference.years > 0:
+		if difference.years == 1:
+			return "1 year ago"
+		else:
+			return str(difference.years) + " years ago"
+	elif difference.months > 0:
+		if difference.months == 1:
+			return "1 month ago"
+		else:
+			return str(difference.months) + " months ago"
+	elif difference.days > 0:
+		if difference.days == 1:
+			return "Yesterday"
+		elif difference.days > 6:
+			weeks = difference.days/7
+			if weeks == 1:
+				return "1 week ago"
+			else:
+				return str(weeks) + " weeks ago"
+		else:
+			return str(difference.days) + " days ago"
+	elif difference.hours >0:
+		if difference.hours == 1:
+			return "1 hour ago"
+		else:
+			return str(difference.hours) + " hours ago"
+
+	elif difference.minutes >0:
+		if difference.minutes < 5:
+			return "Just now"
+		else:
+			return str(difference.minutes) + " minutes ago"
+
+	else: 
+		print difference
+		return "Just now"
+		
 
 #------Routing----- ro
 @app.route('/')
@@ -242,6 +304,24 @@ def index():
 @app.route('/exercise')
 def exercise():
 	return render_template("exercise.html")
+
+@app.route('/makeExercise/<int:template_id>')
+def makeExercise(template_id):
+	template = db.session.query(ExerciseTemplate).filter(ExerciseTemplate.id==int(template_id)).one()
+	exercise = Exercise(exercise_template=template, tempo=template.tempo, date=datetime.datetime.now(), percent_completed=0)
+	db.session.add(exercise)
+	db.session.commit()
+	session['exercise_id'] = exercise.id
+	return redirect(url_for('practise'))
+
+@app.route('/continueExercise/<int:exercise_id>')
+def continueExercise(exercise_id):
+	session['exercise_id'] = int(exercise_id)
+	return redirect(url_for('practise'))
+
+@app.route('/practise')
+def practise():
+	return render_template("exercise.html", exercise_id=session['exercise_id'])
 
 def printDict(source, indent=0):
 	idict = dict(source)
@@ -258,29 +338,40 @@ accidentals = ["", "#", "b"]
 @app.route('/design', methods=["POST", "GET"])
 def design():
 	form = ExerciseTemplateForm()
-	form.root.choices=(("0", "A"), ("1", "B"), ("2", "C"), ("3", "D"), ("4","E"), ("5", "F"), ("6", "G"))
-	form.accidental.choices=((0, ""), (1, "#"), (2, "b"))
+	form.process(request.form)
+	form.root.choices=[(0, "A"), (1, "B"), (2, "C"), (3, "D"), (4,"E"), (5, "F"), (6, "G")]
+	form.accidental.choices=[(0, ""), (1, "#"), (2, "b")]
 	form.shape.choices=db.session.query(Shape.id, Shape.name)
 	form.scale.choices=db.session.query(ScaleFormula.id, ScaleFormula.name)
+ 
 	if request.method=="POST" and form.validate():
-		form.process(request.form)
-		shape = db.session.query(Shape).filter(Shape.id==form.shape.data)
-		scaleFormula = db.session.query(ScaleFormula).filter(ScaleFormula.id==form.scale.data)
+		shape = db.session.query(Shape).filter(Shape.id==int(form.shape.data)).one()
+		scaleFormula = db.session.query(ScaleFormula).filter(ScaleFormula.id==int(form.scale.data)).one()
 		note = roots[form.root.data]+accidentals[form.accidental.data]+"2"
 		scale = Scale(scale_formula = scaleFormula, note=note)
-		db.session.add(scale)
 		exercise_template = ExerciseTemplate(tempo=form.tempo.data, scale=scale, shape=shape)
+		db.session.add(scale)
 		db.session.add(exercise_template)
 		db.session.commit()
-	templates = db.session.query(ExerciseTemplate)
+	templates = db.session.query(ExerciseTemplate).join(Shape).join(Scale).join(ScaleFormula).outerjoin(Exercise).all()
 	return render_template("design.html", form=form, exercise_templates=templates)
 
-@app.route('/json/exercise/<id>')
+@app.route('/json/exercise/<id>', methods=["POST", "GET"])
 def ajax_exercise(id):
-	exercise = db.session.query(Exercise).filter(Exercise.id==id).join(ExerciseTemplate).join(Shape).join(Scale).join(ScaleFormula).one()
+	if request.method=="GET":
+		exercise = db.session.query(Exercise).filter(Exercise.id==id).join(ExerciseTemplate).join(Shape).join(Scale).join(ScaleFormula).one()
+		json = jsonify(exercise.serialize())
+		return json
+	elif request.method=="POST":
+		length = request.form.getlist('updateLength')
+		completed = request.form.getlist('completed')
 
-	json = jsonify(exercise.serialize())
-	return json
+		exercise = db.session.query(Exercise).filter(Exercise.id==id).one()
+		exercise.length = int(length[0])
+		exercise.completed = [u'false', u'true'].index(completed[0])
+		db.session.add(exercise)
+		db.session.commit()
+		return jsonify({'status': "complete"})
 
 @app.route('/login')
 def login():
