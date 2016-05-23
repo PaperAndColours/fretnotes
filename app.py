@@ -88,8 +88,8 @@ class Shape(db.Model, Serializer):
 	
 	all_frets_above = db.Column(db.Integer)
 	all_frets_below = db.Column(db.Integer)
-	single_frets_above = db.Column(db.String)
-	single_frets_below = db.Column(db.String)
+	single_frets_above = db.Column(db.String(len_short))
+	single_frets_below = db.Column(db.String(len_short))
 
 
 class Scale(db.Model, Serializer):
