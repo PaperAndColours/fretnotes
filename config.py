@@ -4,7 +4,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 DEBUG = True
 SECRET_KEY = "development key"
 
-SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(basedir, "db.db")
+SQLALCHEMY_DATABASE_URI = os.environ.get('JAWSDB_URL', 'This_should_be_set')
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_MIGRATE_REPO = os.path.join(basedir, 'db_repository')
 

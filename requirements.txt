@@ -6,3 +6,7 @@ Flask-Security==1.7.5
 Flask-WTF
 sqlalchemy-migrate
 dateutils
+
+mysql-python
+gevent
+gunicorn
