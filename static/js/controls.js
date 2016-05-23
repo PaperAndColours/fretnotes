@@ -28,6 +28,15 @@ function togglePlay(button) {
 	$(this).text(play())
 }
 
+function finished() {
+	$('.play').hide();
+	$('.finish').hide();
+	$('<a href="'+designPath+'"> Return </a>').appendTo('body');
+
+}
+function notFinished() {
+	$('.play').show()
+}
 
 function addPractiseLogEntry(root, scale, shape, seconds, tempo) {
 	var min_secs = parseInt($(".pl_footer :input").val());

@@ -2,6 +2,7 @@
 {% block head %}
 <script>
     var metronomeWorkerPath = "{{url_for('static', filename='js/metronomeworker.js')}}";
+	var designPath = "{{url_for('design')}}";
     {% if exercise_id %}
 	    var exerciseID = {{exercise_id}};
     {% endif %}
@@ -26,18 +27,12 @@ $(document).ready(function() {
 	canvasHeight = canvas.height;
 	context = canvas.getContext('2d');
 
-
 	fretboard = new Fretboard();
 	fb_rend = new FretboardRenderer(fretboard);
 	fb_rend.init();
 	fb_rend.draw();
 	scale_container= new NoteCollection(fb_rend);
 
-	timer = new Timer({onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
-
-	$("[name=root]").change(processScaleForm);
-	$("[name=scale]").change(processScaleForm);
-	$("[name=shape]").change(processScaleForm);
 
 	$('.play').click(togglePlay);
 	$('.finish').click(function() {
@@ -45,6 +40,8 @@ $(document).ready(function() {
 		    { updateLength: timer.get(),
 		     completed: true}
 	    );
+		stop();
+		finished();
 	});
 
 
@@ -68,6 +65,7 @@ $(document).ready(function() {
 		var formula = new ScaleFormula(data.exercise_template.scale.scale_formula.name, data.exercise_template.scale.scale_formula.formula)
 		updateScale(note, formula, shape)
 		$("#exercise_data").text(note.note() + " " + formula.name + " " +  shape.name);
+		timer = new Timer({startTime: data.length, onUpdateStatus: updateTimer, onCounterEnd: finishTimer});
 	});
 	
 

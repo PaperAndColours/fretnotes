@@ -22,6 +22,7 @@ import os.path as osp
 import datetime
 from datetime import date, timedelta
 from dateutils import relativedelta
+import re
 
 app = Flask(__name__)
 app.config.from_object("config")
@@ -236,9 +237,12 @@ class ExerciseTemplateForm(Form):
 	tempo = IntegerField("Tempo")
 
 #-----Filters------- fi
+@app.template_filter('note')
+def note(value):
+	return value[:-1]
+
 @app.template_filter('completed')
 def format_completed(value):
-	print value
 	if value==True:
 		return "Completed"
 	else:
@@ -292,7 +296,6 @@ def format_timedelta(target):
 			return str(difference.minutes) + " minutes ago"
 
 	else: 
-		print difference
 		return "Just now"
 		
 
@@ -327,7 +330,6 @@ def printDict(source, indent=0):
 	idict = dict(source)
 	for key, arg in idict.iteritems():
 		if hasattr(arg, '__getitem__'):
-			print "yeah"
 			return printDict(arg, indent+1)
 		else:
 			print "\t"*indent, key, arg

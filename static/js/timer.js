@@ -3,7 +3,8 @@ function Timer(options) {
   instance = this,
   updateStatus = options.onUpdateStatus || function () {},
   counterEnd = options.onCounterEnd || function () {};
-  seconds = 0;
+  seconds = parseInt(options.startTime) || 0;
+  updateTimer(seconds);
 
   function incrementCounter() {
 	updateStatus(seconds);
@@ -16,10 +17,13 @@ function Timer(options) {
 	timer = setInterval(incrementCounter, 1000);
   };
 
-  this.stop = function () {
+  this.pause = function () {
 	clearInterval(timer);
 	counterEnd(seconds);
   };
+  this.stop = function() {
+	clearInterval(timer);
+  }
   this.get = function() {
   	return seconds;
   }

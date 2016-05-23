@@ -88,6 +88,9 @@ width: 100%;
 text-align: center;
 }
 
+.ex_elem {
+display: inline;
+}
 .hidden {
 	display: none;
 }

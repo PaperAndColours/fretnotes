@@ -20,7 +20,7 @@
 				{{template.id}}	
 			</div>
 			<h3 class="tpl_desc">
-				{{template.scale.note}}
+				{{template.scale.note|note}}
 				{{template.scale.scale_formula.name}}
 				{{template.shape.name}}
 			</h3>
@@ -34,14 +34,22 @@
 				<h4> Exercises </h4>
 				{% for exercise in template.exercises%}
 					<div class="exercise">
-						{{exercise.length|timer}}
-						{{exercise.tempo}}bpm 
-						{{exercise.date|timedelta}}
-						{% if exercise.completed==True %}
-						Completed
-						{% else %}
-						<a href="{{url_for('continueExercise', exercise_id=exercise.id)}}"> Resume </a>
-						{% endif %}
+						<div class="ex_elem">
+							{{exercise.length|timer}}
+						</div>
+						<div class="ex_elem">
+							{{exercise.tempo}}bpm 
+						</div>
+						<div class="ex_elem">
+							{{exercise.date|timedelta}}
+						</div>
+						<div class="ex_elem">
+							{% if exercise.completed==True %}
+							Completed
+							{% else %}
+							<a href="{{url_for('continueExercise', exercise_id=exercise.id)}}"> Resume </a>
+							{% endif %}
+						</div>
 					</div>
 				{%endfor %}
 				<a href="{{url_for('makeExercise', template_id=template.id)}}">

@@ -1,6 +1,6 @@
 var timer = null;
 var tempo = 120.0;          // tempo (in beats per minute)
-var lookahead = 1.0;       // How frequently to call scheduling function 
+var lookahead = 5.0;       // How frequently to call scheduling function 
 var noteLength = 0.05;
 var scheduleAheadTime = 0.1;    // How far ahead to schedule audio (sec)
 var lastEvent = -1;
@@ -37,9 +37,14 @@ function play() {
         return "Pause";
     } else {
         timerWorker.postMessage("stop");
-		timer.stop();
+		timer.pause();
         return "Play";
     }
+}
+
+function stop() {
+	timerWorker.postMessage("stop");
+	timer.stop();
 }
 
 function scheduler() {
